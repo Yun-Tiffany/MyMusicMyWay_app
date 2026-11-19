@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<title>想怎麼聽就怎麼聽</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="想怎麼聽">
+<meta name="theme-color" content="#e4e5e9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Patrick+Hand&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 參考圖分析後的設計系統（只做淺色版，和參考圖一樣）：
+   背景：很淺、偏冷的霧灰，上亮下暗的漸層；元件和背景同色，靠「左上白光 + 右下長而柔的陰影」浮起來，像黏土。
+   形狀：高膠囊、超圓角方塊（squircle）、小圓藥丸；沒有線框。
+   顏色：霧灰 + 近黑藏青（深色元件，帶一點光澤）+ 一個電光藍（只用在發光線條和重點字）。圖示是實心深灰。
+   字體：大數字用幾何無襯線（Jost），英文小字用斜體灰字（Hour / Min / Friday），日期用手寫字（Patrick Hand），標籤是淺灰小字。
+   主體：立體白色太空人（可換成其他動物），斜斜地浮在卡片上、跨出卡片邊界；另有一條霓虹發光的深色膠囊。 */
+:root {
+  color-scheme: light;
+  --bg-top: #eeeff2; --bg: #e4e5e9; --bg-bot: #dcdde2;
+  --hi: #ffffff; --sh: rgba(70, 74, 90, .28); --sh-soft: rgba(70, 74, 90, .14);
+  --ink: #17181f; --icon: #2a2b31; --muted: #8a8c95; --label: #9a9ca5;
+  --night: #11131c; --night-2: #1c1f2c; --blue: #1f86ff; --blue-hi: #6fb4ff; --blue-glow: rgba(31, 134, 255, .55);
+  --f-num: "Jost", "Noto Sans TC", system-ui, sans-serif;
+  --f-hand: "Patrick Hand", "Jost", cursive;
+  --f-body: "Noto Sans TC", "Jost", system-ui, sans-serif;
+  --raise: -8px -8px 18px var(--hi), 10px 14px 26px var(--sh), 2px 3px 6px var(--sh-soft);
+  --raise-sm: -4px -4px 10px var(--hi), 5px 7px 14px var(--sh), 1px 2px 3px var(--sh-soft);
+  --press: inset 4px 5px 10px var(--sh), inset -4px -4px 9px var(--hi);
+}
+* { box-sizing: border-box }
+html { background: var(--bg); overflow-x: clip }
+body { overflow-x: clip }
+body { margin: 0; background: linear-gradient(180deg, var(--bg-top), var(--bg) 40%, var(--bg-bot)); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5; min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 56px }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 30px }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 34px; align-items: start }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); gap: 30px } }
+.col { display: grid; gap: 30px; min-width: 0 }
+.topbar { display: flex; align-items: center; gap: 14px }
+.topbar h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .02em; flex: 1; min-width: 0 }
+.topbar .sub { font-family: var(--f-num); color: var(--muted); font-size: 13px }
+.sq-dark { width: 52px; height: 52px; border-radius: 16px; background: var(--night); color: #fff; display: grid; place-items: center; box-shadow: 6px 8px 16px var(--sh); flex: none }
+.sq-dark svg { width: 24px; height: 24px }
+
+/* 通用元件 */
+.card { background: linear-gradient(145deg, #eceef1, #e1e2e6); border-radius: 34px; padding: 22px; display: grid; gap: 14px; min-width: 0; box-shadow: var(--raise) }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px }
+.between { justify-content: space-between }
+h2 { margin: 0; font-size: 15px; font-weight: 700 }
+.lbl { font-family: var(--f-num); font-weight: 300; color: var(--label); font-size: 13px; letter-spacing: .02em }
+.tiny { font-size: 12px; color: var(--muted) }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums }
+button, select, input { font: inherit; color: inherit }
+button { background: linear-gradient(145deg, #eff0f3, #e0e1e5); border: none; border-radius: 99px; padding: 8px 16px; cursor: pointer; font-size: 13px; color: var(--ink); box-shadow: var(--raise-sm) }
+button:hover { color: var(--blue) }
+button:active, button.on { box-shadow: var(--press); color: var(--blue) }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible, svg:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px }
+button:disabled { opacity: .5; cursor: default }
+.mini { padding: 7px 14px; font-size: 12px }
+select, input[type=text], input[type=number] { background: var(--bg); border: none; border-radius: 14px; padding: 8px 12px; min-width: 0; box-shadow: var(--press) }
+
+/* 主視覺：大數字（像參考圖的 07 Hour / Friday / 37 Min） */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 20px; align-items: stretch }
+@media (max-width: 440px) { .hero { grid-template-columns: minmax(0, 1fr) 84px; gap: 12px } .clock .big { font-size: 64px } .clock .day { font-size: 40px } .clock .hand-date { font-size: 15px } .clock .hand-date small { font-size: 14px; margin-left: 10px } .clock .l1 .it, .clock .l3 .it { font-size: 16px } .pill { min-height: 210px; padding: 8px } .tools button svg { width: 38px; height: 38px } .tools hr { width: 44px } .tank .read { font-size: 12px } }
+.clock { display: grid; align-content: center; min-width: 0; position: relative }
+.clock .big { font-family: var(--f-num); font-weight: 400; font-size: clamp(76px, 12vw, 112px); line-height: .82; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--ink) }
+.clock .it { font-family: var(--f-num); font-style: italic; font-weight: 300; color: var(--muted) }
+.clock .l1 { display: flex; align-items: flex-end; gap: 6px }
+.clock .l1 .it { font-size: 22px; margin-bottom: 2px }
+.clock .day { font-size: clamp(44px, 7vw, 64px); line-height: 1.05; margin: 2px 0 0 54px; color: #74767f }
+.clock .l3 { display: flex; align-items: flex-end; gap: 4px; margin-top: 4px }
+.clock .hand-date { font-family: var(--f-hand); font-size: 19px; line-height: 1.15; color: var(--ink); align-self: center; margin-right: auto; white-space: nowrap }
+.clock .hand-date small { display: block; font-size: 17px; margin-left: 30px }
+.clock .l3 .it { font-size: 22px; margin-bottom: 4px }
+.pill { border-radius: 60px; padding: 12px; display: grid; min-height: 250px; background: linear-gradient(160deg, #f1f2f5, #dfe0e4); box-shadow: var(--raise) }
+.tank { position: relative; border-radius: 48px; overflow: hidden; background: linear-gradient(180deg, #e9eaee, #dadbe0); box-shadow: inset 4px 6px 12px var(--sh), inset -3px -3px 8px var(--hi) }
+.tank .liquid { position: absolute; left: 0; right: 0; bottom: 0; height: 12%; background: linear-gradient(180deg, #1a1c27, #07080c); transition: height .35s linear; border-radius: 0 0 48px 48px }
+.tank .liquid svg { position: absolute; left: 0; bottom: 100%; width: 100%; height: 38px; margin-bottom: -1px }
+.tank .liquid svg path { fill: #1a1c27 }
+.tank .read { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; color: var(--blue); font-family: var(--f-num); font-weight: 500; font-size: 15px; line-height: 1.35; text-shadow: 0 0 10px var(--blue-glow) }
+.tools { display: flex; flex-direction: column; align-items: center; justify-content: space-evenly }
+.tools button { background: none; box-shadow: none; padding: 6px; border-radius: 16px; color: var(--icon) }
+.tools button svg { width: 52px; height: 52px; display: block }
+.tools button.on { color: var(--blue); box-shadow: none; filter: drop-shadow(0 0 6px var(--blue-glow)) }
+.tools hr { width: 66px; border: none; border-top: 3px solid var(--icon); border-radius: 2px; margin: 0 }
+
+/* 霓虹膠囊 + 圖示方塊 */
+.strip { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: center }
+@media (max-width: 440px) { .strip { gap: 14px } }
+.neon { height: 128px; border-radius: 70px; background: radial-gradient(120% 140% at 30% 20%, #23263a, #0b0c12 70%); padding: 10px; box-shadow: 10px 14px 26px var(--sh), -6px -6px 14px var(--hi) }
+.neon > div { height: 100%; border-radius: 60px; border: 2.5px solid var(--blue); box-shadow: 0 0 10px var(--blue-glow), inset 0 0 10px var(--blue-glow); position: relative; overflow: hidden }
+.neon svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.neon .ln { fill: none; stroke: var(--blue-hi); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px var(--blue)) }
+.neon .fl { fill: var(--blue); filter: drop-shadow(0 0 4px var(--blue)) }
+.neon .bar { transform-box: fill-box; transform-origin: bottom; }
+.playing .neon .bar { animation: eq 1s ease-in-out infinite alternate }
+.neon .bar:nth-of-type(2) { animation-delay: .2s } .neon .bar:nth-of-type(3) { animation-delay: .45s } .neon .bar:nth-of-type(4) { animation-delay: .1s } .neon .bar:nth-of-type(5) { animation-delay: .35s }
+@keyframes eq { from { transform: scaleY(.35) } to { transform: scaleY(1) } }
+.tile { aspect-ratio: 1 / 1.05; border-radius: 30px; display: grid; place-items: center; align-content: center; gap: 6px; padding: 10px; background: linear-gradient(150deg, #f0f1f4, #dfe0e4); box-shadow: var(--raise); color: var(--icon); width: 100%; font-size: 13px }
+.tile svg { width: 46px; height: 46px }
+.tile span { font-family: var(--f-num); font-weight: 300; color: var(--muted); font-size: 13px }
+.tile:active { box-shadow: var(--press) }
+.tile.play { background: radial-gradient(120% 120% at 30% 20%, #2a2d40, #0c0d13 70%); color: #fff }
+.tile.play svg { color: var(--blue); filter: drop-shadow(0 0 6px var(--blue)) }
+.tile.play span { color: #9aa3b8 }
+.transport { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px }
+
+/* 時鐘式進度盤 */
+.dial-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: stretch }
+.dial-card.in-sheet { width: min(230px, 64%); margin: 2px auto 6px }
+.dial-card { aspect-ratio: 1 / 1; border-radius: 26%; background: radial-gradient(130% 110% at 20% 10%, #2b2e42, #10121b 55%, #090a0f); box-shadow: 12px 16px 28px var(--sh), -6px -6px 14px var(--hi); position: relative; overflow: hidden }
+.dial-card::before { content: ""; position: absolute; left: -30%; top: -60%; width: 110%; height: 110%; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.08); }
+.dial-card svg { position: absolute; inset: 6%; width: 88%; height: 88%; touch-action: none; cursor: pointer; overflow: visible }
+.g-glow { stroke: var(--blue); filter: drop-shadow(0 0 3px var(--blue)) }
+.g-fill { fill: var(--blue-hi); filter: drop-shadow(0 0 5px var(--blue)) }
+.g-dim { stroke: var(--blue); opacity: .55 }
+.g-txt { fill: var(--blue-hi); font-family: var(--f-num); font-size: 26px; text-anchor: middle; dominant-baseline: central; filter: drop-shadow(0 0 3px var(--blue)) }
+.time-pill { border-radius: 40px; padding: 18px 22px; background: linear-gradient(150deg, #f0f1f4, #dfe0e4); box-shadow: var(--raise); display: grid; gap: 6px }
+.time-pill .t { font-family: var(--f-num); font-size: 38px; line-height: 1; letter-spacing: -.02em }
+.time-pill .d { font-family: var(--f-num); font-weight: 300; color: var(--muted) }
+.chip-dark { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; background: var(--night); color: var(--blue-hi); font-size: 12px; width: fit-content }
+#yt-box { aspect-ratio: 16/9; max-width: 100%; border-radius: 26px; overflow: hidden; background: var(--night); box-shadow: var(--raise) }
+#yt-box iframe { width: 100%; height: 100%; display: block }
+
+/* 吉祥物卡片：插圖斜斜地浮出卡片 */
+.mascot-card { position: relative; padding-top: 22px; overflow: visible; min-height: 300px; grid-template-columns: minmax(0, 1fr) }
+.mascot-card .txt { max-width: 46%; display: grid; gap: 10px; align-content: start; position: relative; z-index: 2 }
+.mascot-stage { position: absolute; right: -14px; top: -46px; width: 62%; max-width: 330px; aspect-ratio: 1 / 1; pointer-events: none; z-index: 3 }
+.mascot-stage svg { width: 100%; height: 100%; overflow: visible; transform: rotate(-16deg); filter: drop-shadow(12px 20px 16px rgba(40, 44, 60, .35)) }
+.mascot-card.playing .mascot-stage svg { animation: float 3.2s ease-in-out infinite }
+@keyframes float { 50% { transform: rotate(-12deg) translateY(-10px) } }
+.mascot-pick { display: flex; flex-wrap: wrap; gap: 8px; position: relative; z-index: 4; margin-top: auto; padding-top: 8px }
+.next-line { display: grid; gap: 2px; padding: 10px 14px; border-radius: 20px; box-shadow: var(--press); min-width: 0 }
+.next-line .lbl { font-style: italic }
+.next-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.queue-wrap { display: grid; gap: 12px; position: relative; z-index: 4; padding-top: 6px; border-top: 1px solid rgba(70,74,90,.12) }
+.queue-wrap[hidden] { display: none }
+.mascot-pick button.on { background: var(--night); color: var(--blue-hi); box-shadow: 4px 6px 12px var(--sh) }
+.batt { display: flex; align-items: center; gap: 10px }
+.bolt { width: 40px; height: 40px; border-radius: 12px; background: var(--night); display: grid; place-items: center; box-shadow: 4px 6px 12px var(--sh) }
+.bolt svg { width: 22px; height: 22px; color: var(--blue); filter: drop-shadow(0 0 4px var(--blue)) }
+.cells { display: flex; gap: 4px; padding: 4px; border: 3px solid var(--icon); border-radius: 9px; position: relative; margin-right: 6px }
+.cells::after { content: ""; position: absolute; right: -9px; top: 50%; width: 5px; height: 12px; margin-top: -6px; background: var(--icon); border-radius: 0 3px 3px 0 }
+.cells i { width: 9px; height: 22px; border-radius: 3px; background: var(--icon) }
+.cells i.off { background: transparent; box-shadow: inset 0 0 0 1.5px #b9bbc2 }
+
+/* 列表：像參考圖的日期藥丸 */
+ol, ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 14px 8px 8px; border-radius: 26px; position: relative }
+.item:hover { box-shadow: var(--press) }
+.item.current { background: var(--night); color: #fff; box-shadow: 6px 8px 16px var(--sh) }
+.item.current .t { color: var(--blue-hi); text-shadow: 0 0 8px var(--blue-glow) }
+.item.current .a, .item.current .why, .item.current .grip, .item.current .heart { color: #8d93a6 }
+.item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500 }
+.item button.t { background: none; box-shadow: none; border-radius: 0; padding: 0; text-align: left }
+.item button.t:hover { color: var(--blue) }
+.item .a { color: var(--muted); font-size: 12px; font-weight: 400 }
+.idx { font-family: var(--f-num); font-size: 17px; width: 50px; height: 34px; border-radius: 99px; display: grid; place-items: center; background: linear-gradient(150deg, #f2f3f6, #e0e1e5); box-shadow: var(--raise-sm) }
+.why { font-size: 11px; color: var(--muted); white-space: nowrap }
+.why b { color: var(--blue); font-weight: 500 }
+.heart { box-shadow: none; background: none; padding: 4px; font-size: 17px; line-height: 1; color: #a3a5ad }
+.heart:active { box-shadow: none }
+.heart.liked { color: var(--blue); text-shadow: 0 0 8px var(--blue-glow) }
+.lib-item { grid-template-columns: auto auto auto minmax(0, 1fr) auto auto; padding-left: 10px }
+.ab-btn { padding: 0; width: 38px; height: 28px; font-family: var(--f-num); font-size: 12px; font-weight: 500; letter-spacing: .02em }
+.ab-btn.set { background: var(--night); color: var(--blue-hi); box-shadow: 3px 4px 9px var(--sh) }
+.item.current .ab-btn { background: #23263a; color: var(--blue-hi); box-shadow: none }
+.ab-sheet { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(440px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto; z-index: 56; box-shadow: 0 18px 50px rgba(30, 34, 50, .35), -6px -6px 14px var(--hi) }
+.ab-sheet[hidden], .ab-backdrop[hidden] { display: none }
+.ab-backdrop { position: fixed; inset: 0; z-index: 55; background: rgba(40, 44, 60, .18) }
+.grip { cursor: grab; color: #a3a5ad; padding: 4px 2px; font-size: 16px; line-height: 1; touch-action: none; user-select: none }
+.lib-item.dragging { background: #eceef1; box-shadow: var(--raise); z-index: 2; cursor: grabbing }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none }
+.lib-item.off .t, .lib-item.off .a { opacity: .45 }
+input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 99px; margin: 0; cursor: pointer; position: relative; flex: none; background: #dcdde2; box-shadow: var(--press); transition: background .15s }
+input[type=checkbox]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #f5f6f8; box-shadow: 1px 2px 4px var(--sh); transition: transform .15s }
+input[type=checkbox]:checked { background: var(--night); box-shadow: none }
+input[type=checkbox]:checked::after { transform: translateX(16px); background: var(--blue); box-shadow: 0 0 8px var(--blue) }
+.rule { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: start }
+.rule input[type=checkbox] { margin-top: 1px }
+.rule .d { grid-column: 2; font-size: 12px; color: var(--muted) }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 10px }
+.seg button.on { background: var(--night); color: var(--blue-hi); box-shadow: 4px 6px 12px var(--sh) }
+.notice { font-size: 12px; color: var(--muted); padding: 10px 14px; border-radius: 16px; box-shadow: var(--press) }
+details > summary { cursor: pointer; list-style: none; color: var(--muted) }
+details > summary::-webkit-details-marker { display: none }
+details > summary::after { content: " ＋"; color: var(--blue) }
+details[open] > summary::after { content: " －" }
+details.card > summary { color: var(--ink); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.save-yt { display: grid; gap: 6px; justify-items: start }
+.save-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--night); color: #fff; padding: 11px 20px; font-weight: 500; box-shadow: 6px 8px 16px var(--sh) }
+.save-btn svg { width: 18px; height: 18px; color: var(--blue); filter: drop-shadow(0 0 4px var(--blue)) }
+.save-btn:hover { color: var(--blue-hi) }
+.save-btn:disabled { background: #9a9ca5; box-shadow: none }
+.save-panel { display: grid; gap: 10px; padding: 14px; border-radius: 22px; box-shadow: var(--press) }
+.save-panel[hidden] { display: none }
+.notice a, .steps a { color: var(--blue) }
+.steps { list-style: decimal; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; color: var(--ink) }
+.steps code { font-size: 12px; background: #fff; padding: 1px 6px; border-radius: 6px; word-break: break-all }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(18px + env(safe-area-inset-top, 0px)); background: var(--night); color: #fff; padding: 11px 20px; border-radius: 18px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); z-index: 60; box-shadow: 6px 10px 22px var(--sh) }
+.toast.show { opacity: 1 }
+@media (prefers-reduced-motion: reduce) { .toast, input[type=checkbox], input[type=checkbox]::after, .tank .liquid { transition: none } .mascot-card.playing .mascot-stage svg, .playing .neon .bar { animation: none } }
+.m-w { fill: url(#clay); stroke: #3b3e49; stroke-width: 1.8; stroke-linejoin: round }
+.m-d { fill: url(#visor) }
+.m-s { fill: none; stroke: #2a2c35; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round }
+.m-g { fill: #1f86ff; filter: drop-shadow(0 0 3px #1f86ff) }
+.m-gs { fill: none; stroke: #1f86ff; stroke-width: 3.5; stroke-linecap: round; filter: drop-shadow(0 0 3px #1f86ff) }
+.m-star { fill: #a6d3ff; filter: drop-shadow(0 0 3px #1f86ff) }
+</style>
+
+<div class="wrap" id="app">
+  <div class="topbar">
+    <span class="sq-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor"/><circle cx="16.5" cy="16" r="2.5" fill="currentColor"/></svg></span>
+    <h1>想怎麼聽就怎麼聽</h1>
+    <span class="sub"><span id="trk-code">尚未播放</span> · <span id="trk-pos">勾選 0 首</span></span>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <div class="hero" aria-label="正在播放">
+        <div class="clock">
+          <div class="it day" id="day-word" style="margin-left:0">Monday</div>
+          <span class="hand-date" style="margin-top:8px"><span id="hand-date">2026-11-16</span><small id="hand-sub" hidden></small></span>
+          <span hidden><span id="big-m"></span><span id="big-s"></span></span>
+        </div>
+        <div class="pill">
+          <div class="tank" aria-hidden="true">
+            <div class="liquid" id="water"><svg viewBox="0 0 100 38" preserveAspectRatio="none"><path d="M0 38 V22 C10 6 26 2 40 10 C54 18 60 30 76 24 C88 19 94 8 100 6 V38Z"/></svg></div>
+            <div class="read">Timing<br><span id="pct">0%</span></div>
+          </div>
+        </div>
+        <div hidden><button id="btn-like" tabindex="-1"></button><button id="btn-loopq" tabindex="-1"></button></div>
+      </div>
+
+      <div class="strip">
+        <div class="neon" aria-hidden="true"><div>
+          <svg viewBox="0 0 300 110" preserveAspectRatio="xMidYMid meet">
+            <g id="neon-l"></g>
+            <rect class="fl bar" x="112" y="38" width="9" height="40" rx="4.5"/><rect class="fl bar" x="128" y="28" width="9" height="50" rx="4.5"/><rect class="fl bar" x="144" y="44" width="9" height="34" rx="4.5"/><rect class="fl bar" x="160" y="32" width="9" height="46" rx="4.5"/><rect class="fl bar" x="176" y="48" width="9" height="30" rx="4.5"/>
+            <g id="neon-r"></g>
+          </svg>
+        </div></div>
+        <button class="tile" id="btn-prev" aria-label="上一首"><svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="30" rx="7" fill="currentColor"/><path d="M15 17v14" stroke="#e8e9ec" stroke-width="3.4" stroke-linecap="round"/><path d="M33 16 L19 24 L33 32Z" fill="#e8e9ec"/></svg><span>上一首</span></button>
+        <button class="tile" id="btn-next" aria-label="下一首（未過半算跳過）"><svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="30" rx="7" fill="currentColor"/><path d="M33 17v14" stroke="#e8e9ec" stroke-width="3.4" stroke-linecap="round"/><path d="M15 16 L29 24 L15 32Z" fill="#e8e9ec"/></svg><span>下一首</span></button>
+      </div>
+
+      <div class="dial-row">
+        <div hidden><span id="t-cur"></span><span id="t-dur"></span><span id="now-src"></span></div>
+          <button class="tile play" id="btn-play" aria-label="播放" style="aspect-ratio:auto;padding:16px;border-radius:30px"><svg viewBox="0 0 48 48" id="play-ico"><path d="M16 10 L38 24 L16 38Z" fill="currentColor"/></svg><span id="play-lbl">播放</span></button>
+      </div>
+      <details class="card" aria-label="播放順序">
+        <summary><h2>播放順序</h2><span class="tiny" id="mode-now"></span></summary>
+        <div class="seg" role="group" aria-label="排序模式">
+          <button data-mode="order">依序</button>
+          <button data-mode="shuffle">規則式隨機</button>
+          <button data-mode="weighted">權重播放</button>
+        </div>
+        <div class="tiny" id="mode-desc"></div>
+        <label class="rule"><input type="checkbox" id="r-artist"><span>同一位歌手不連續出現</span><span class="d">候選不足時會自動放寬。</span></label>
+        <label class="rule"><input type="checkbox" id="r-recent"><span>最近播過的 <input type="number" id="r-recent-n" min="1" max="20" value="3" style="width:4em"> 首先不重播</span><span class="d">避免一直聽到同幾首。</span></label>
+        <label class="rule"><input type="checkbox" id="r-skip"><span>跳過太多次的歌少出現</span><span class="d">在一首歌播不到一半就按下一首，算一次跳過。權重模式下每跳過一次權重下降。</span></label>
+      </details>
+      <div id="yt-box" hidden><div id="yt-host"></div></div>
+    </div>
+
+    <div class="col">
+      <section class="card mascot-card" id="mascot-card" aria-label="吉祥物">
+        <div class="txt">
+          <span class="lbl">Listening with</span>
+          <div style="font-family:var(--f-num);font-style:italic;font-weight:300;font-size:34px;color:#74767f;line-height:1.05" id="mascot-en"></div><div class="tiny" id="mascot-name" style="margin-top:-6px"></div>
+          <div>
+            <div style="font-size:18px;font-weight:700;line-height:1.3"><span id="now-title">按播放開始</span> <span class="num" id="now-time" style="font-weight:400;font-size:14px;color:var(--muted);white-space:nowrap"></span></div>
+            <div class="tiny" id="now-artist">—</div>
+          </div>
+          <div class="next-line">
+            <span class="lbl">Next</span>
+            <span class="next-t" id="next-title">—</span>
+            <span class="tiny" id="next-artist" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          </div>
+          <button class="mini" id="btn-queue-toggle" aria-expanded="false" aria-controls="queue-wrap" style="width:fit-content">顯示全部</button>
+        </div>
+        <div class="mascot-stage" id="mascot-stage"></div>
+        <div class="mascot-pick" role="group" aria-label="選擇插圖" id="mascot-pick"></div>
+        <div id="queue-wrap" class="queue-wrap" hidden>
+          <div class="row between"><h2>接下來</h2><button class="mini" id="btn-reshuffle">重新排</button></div>
+          <ol id="queue"></ol>
+        </div>
+      </section>
+
+
+
+      <section class="card" aria-label="歌單">
+        <div class="row between">
+          <h2>歌單</h2>
+          <span class="lbl num" id="lib-count"></span>
+        </div>
+        <div class="row between">
+          <span class="tiny">只播放有打開開關的歌。按住 ⠿ 拖曳調整順序。</span>
+          <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button></span>
+        </div>
+        <ul id="library"></ul>
+        <div class="save-yt">
+          <button id="btn-save-yt" class="save-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14 0v-4h-2v4h-4v2h4v4h2v-4h4v-2z"/></svg>儲存為 YouTube 播放清單</button>
+          <span class="tiny" id="save-yt-hint"></span>
+        </div>
+        <div id="save-yt-panel" class="save-panel" hidden>
+          <div class="row" style="gap:8px">
+            <input type="text" id="pl-name" placeholder="播放清單名稱" style="flex:1 1 180px">
+            <select id="pl-privacy" aria-label="誰看得到">
+              <option value="private">只有我</option>
+              <option value="unlisted">知道連結的人</option>
+            </select>
+          </div>
+          <div class="row" style="gap:8px">
+            <button id="btn-save-go" class="mini">登入 Google 並建立</button>
+            <button id="btn-save-cancel" class="mini">取消</button>
+          </div>
+          <div class="notice" id="save-yt-status" hidden></div>
+        </div>
+        <details>
+          <summary>YouTube 帳號設定（第一次用要做一次）</summary>
+          <div style="display:grid;gap:10px;margin-top:12px">
+            <label class="tiny" for="gclient">Google OAuth 用戶端 ID</label>
+            <input type="text" id="gclient" placeholder="xxxxxxxx.apps.googleusercontent.com">
+            <ol class="steps">
+              <li>到 <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> 建一個新專案（名字隨便取，例如「我的播放器」）。</li>
+              <li>到 <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3</a> 頁面按「啟用」。</li>
+              <li>到 <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">OAuth 同意畫面</a>：使用者類型選「外部」，填 app 名稱和你的 Gmail；在「目標對象／測試使用者」把你自己的 Gmail 加進去。</li>
+              <li>到 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">憑證</a> →「建立憑證」→「OAuth 用戶端 ID」→ 類型選「網頁應用程式」。在「已授權的 JavaScript 來源」填上這個網頁開啟時的網址開頭，下面會顯示：<code id="origin-hint"></code></li>
+              <li>把產生的「用戶端 ID」複製，貼到上面的格子。它會記在這台瀏覽器裡。</li>
+            </ol>
+            <div class="tiny">登入時 Google 可能會說「這個應用程式未經驗證」，因為這是你自己建的，按「繼續」即可。每天的免費額度大約可以放 190 首歌。</div>
+          </div>
+        </details>
+        <details>
+          <summary>加入歌曲</summary>
+          <div style="display:grid;gap:12px;margin-top:12px">
+            <input type="text" id="yt-url" placeholder="YouTube 網址或影片 ID">
+            <div class="row">
+              <input type="text" id="yt-title" placeholder="歌名" style="flex:1 1 120px">
+              <input type="text" id="yt-artist" placeholder="歌手" style="flex:1 1 100px">
+              <button id="btn-add-yt">加入 YouTube 歌曲</button>
+            </div>
+            <div class="notice" id="yt-status">YouTube 播放器載入中…</div>
+            <div class="row">
+              <label for="file-in" class="tiny">或加入本機音檔：</label>
+              <input type="file" id="file-in" accept="audio/*" multiple style="max-width:100%">
+            </div>
+          </div>
+        </details>
+      </section>
+
+    </div>
+  </div>
+</div>
+      <div class="ab-backdrop" id="ab-backdrop" hidden></div>
+<section class="card ab-sheet" id="ab-sheet" role="dialog" aria-label="段落循環" hidden>
+        <div class="row between">
+          <h2 style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A–B 循環 · <span id="ab-song"></span></h2>
+          <button class="mini" id="btn-ab-close" aria-label="關閉">✕</button>
+        </div>
+        <span class="tiny num" id="ab-label">未設定</span>
+        <div class="dial-card in-sheet">
+          <svg id="dial" viewBox="0 0 400 400" role="slider" aria-label="播放進度，點圓周可以跳到該位置" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <g id="ticks"></g>
+            <circle id="ab-arc" cx="200" cy="200" r="150" fill="none" stroke="#7fbcff" stroke-width="12" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 200 200)" opacity="0" style="filter: drop-shadow(0 0 6px #1f86ff)"/>
+            <circle id="prog-arc" class="g-glow" cx="200" cy="200" r="162" fill="none" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 200 200)"/>
+            <line id="hand" class="g-glow" x1="200" y1="200" x2="200" y2="40" stroke-width="7" stroke-linecap="round"/>
+            <circle class="g-fill" cx="200" cy="200" r="12"/>
+            <circle id="knob" class="g-fill" cx="0" cy="0" r="7"/>
+          </svg>
+        </div>
+
+        <div class="row between">
+          <div class="batt" aria-label="剩餘循環次數">
+            <span class="bolt"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 L5 13.5h5.5L9 22l9-12h-5.6z"/></svg></span>
+            <span class="lbl">repeat</span>
+            <span class="num" id="batt-n" style="font-size:18px">–</span>
+            <span class="cells" id="batt"><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+          <select id="ab-times" aria-label="重複次數">
+            <option value="-1">無限次</option><option value="1">1 次</option><option value="2">2 次</option>
+            <option value="3" selected>3 次</option><option value="5">5 次</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="mini" id="btn-a">設 A 點</button>
+          <button class="mini" id="btn-b">設 B 點</button>
+          <button class="mini" id="btn-ab-clear">清除</button>
+          <button class="mini" id="btn-ab-toggle">暫停循環</button>
+        </div>
+        <div class="tiny">播到想重複的開頭按「設 A 點」，播到結尾按「設 B 點」。設定會記在這首歌上。</div>
+      </section>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ============ 小工具 ============ */
+const $ = s => document.querySelector(s);
+const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + String(s).padStart(2, '0'); };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('mlab.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('mlab.' + k, JSON.stringify(v)); } catch {} }
+};
+let toastTimer;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200); }
+
+/* ============ 播放後端（可替換）============
+   每個後端都實作同一組方法：load(track) play() pause() seek(t) time() duration() 以及 onEnded 回呼。
+   之後要接 Spotify，只要多寫一個 SpotifyBackend 註冊進 BACKENDS。 */
+
+// 示範音軌：用程式合成的小旋律，讓原型不需要任何外部來源就能試玩
+const DEMO_SCALES = { C: [261.6, 329.6, 392, 523.3], A: [220, 261.6, 329.6, 440], F: [174.6, 220, 261.6, 349.2], G: [196, 246.9, 293.7, 392], D: [146.8, 185, 220, 293.7], E: [164.8, 207.7, 246.9, 329.6] };
+function synthDemo(ctx, spec) {
+  const sr = 22050, dur = spec.len, n = Math.floor(sr * dur);
+  const buf = ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+  const notes = DEMO_SCALES[spec.key], step = 60 / spec.bpm / 2;
+  const pattern = spec.pattern;
+  for (let i = 0, k = 0; i < n; k++) {
+    const len = Math.floor(step * sr), f = notes[pattern[k % pattern.length]] * (Math.floor(k / 16) % 2 ? 1 : (spec.lift || 1));
+    for (let j = 0; j < len && i < n; j++, i++) {
+      const tt = j / sr, env = Math.exp(-tt * spec.decay);
+      d[i] = 0.28 * env * (Math.sin(2 * Math.PI * f * tt) + 0.3 * Math.sin(4 * Math.PI * f * tt)) + 0.06 * Math.sin(2 * Math.PI * notes[0] / 2 * (i / sr));
+    }
+  }
+  return buf;
+}
+
+class WebAudioBackend {
+  constructor() { this.ctx = null; this.buf = null; this.src = null; this.offset = 0; this.startAt = 0; this.playing = false; this.cache = new Map(); this.onEnded = () => {}; }
+  ensure() { if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.gain = this.ctx.createGain(); this.gain.connect(this.ctx.destination); } return this.ctx; }
+  async load(track) {
+    this.stopSource(); this.offset = 0; this.playing = false;
+    const ctx = this.ensure();
+    if (!this.cache.has(track.id)) {
+      if (track.source === 'demo') this.cache.set(track.id, synthDemo(ctx, track.demo));
+      else if (track.source === 'local') {
+        const raw = localFiles.get(track.id);
+        if (!raw) throw new Error('本機檔案已不在記憶體中，請重新加入');
+        this.cache.set(track.id, await ctx.decodeAudioData(raw.slice(0)));
+      }
+    }
+    this.buf = this.cache.get(track.id);
+  }
+  stopSource() { const s = this.src; this.src = null; if (s) { try { s.stop(); } catch {} } }
+  play() {
+    this.want = true;
+    if (!this.buf) return; const ctx = this.ensure(); ctx.resume();
+    if (this.offset >= this.buf.duration) this.offset = 0;
+    const s = ctx.createBufferSource(); s.buffer = this.buf; s.connect(this.gain);
+    s.onended = () => { if (this.src === s) { this.src = null; this.playing = false; this.offset = this.buf.duration; this.onEnded(); } };
+    s.start(0, this.offset); this.src = s; this.startAt = ctx.currentTime - this.offset; this.playing = true;
+  }
+  pause() { this.want = false; if (!this.playing) return; this.offset = this.time(); this.playing = false; this.stopSource(); }
+  seek(t) { const was = this.playing; this.pause(); this.offset = Math.max(0, Math.min(t, this.duration() - 0.05)); if (was) this.play(); }
+  time() { return this.playing ? this.ctx.currentTime - this.startAt : this.offset; }
+  duration() { return this.buf ? this.buf.duration : 0; }
+  isPlaying() { return this.playing; }
+  show() { $('#yt-box').hidden = true; }
+}
+
+class YouTubeBackend {
+  constructor() { this.player = null; this.ready = false; this.onEnded = () => {}; this.state = -1; this.init(); }
+  init() {
+    const done = ok => { this.available = ok; updateYtStatus(); };
+    const timer = setTimeout(() => done(false), 7000);
+    window.onYouTubeIframeAPIReady = () => {
+      clearTimeout(timer);
+      this.player = new YT.Player('yt-host', {
+        width: '100%', height: '100%', playerVars: { playsinline: 1, rel: 0 },
+        events: {
+          onReady: () => { this.ready = true; done(true); },
+          onStateChange: e => {
+            this.state = e.data;
+            if (e.data === 0) this.onEnded();
+            // 鎖屏或切到背景時 iOS 常會自動暫停，若不是使用者按的暫停就試著接著播
+            if (e.data === 2 && this.want && document.hidden) setTimeout(() => { if (this.want) this.player.playVideo(); }, 400);
+            syncPlayButton();
+          },
+          onError: () => { toast('這支影片不能嵌入播放，自動跳下一首'); setTimeout(() => next(false), 800); }
+        }
+      });
+    };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+    s.onerror = () => { clearTimeout(timer); done(false); };
+    document.head.appendChild(s);
+  }
+  async load(track) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.player.cueVideoById(track.ref); }
+  play() { this.want = true; this.player && this.player.playVideo(); }
+  pause() { this.want = false; this.player && this.player.pauseVideo(); }
+  seek(t) { this.player && this.player.seekTo(t, true); }
+  time() { return this.player && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
+  duration() { return this.player && this.player.getDuration ? this.player.getDuration() : 0; }
+  isPlaying() { return this.state === 1 || this.state === 3; }
+  show() { $('#yt-box').hidden = false; }  // 依 YouTube 規範，播放器必須看得到
+}
+
+const webAudio = new WebAudioBackend();
+const BACKENDS = { demo: webAudio, local: webAudio, yt: null };
+const SRC_LABEL = { demo: '示範音軌', local: '本機音檔', yt: 'YouTube' };
+const localFiles = new Map();
+
+/* ============ 播放邏輯（和後端無關）============ */
+const DEFAULT_LIB = [
+  { id: 'd1', title: '晨光步道', artist: '綠燈樂團', source: 'demo', demo: { key: 'C', bpm: 104, pattern: [0,1,2,3,2,1], decay: 5, len: 42 } },
+  { id: 'd2', title: '雨天的捷運', artist: '綠燈樂團', source: 'demo', demo: { key: 'A', bpm: 84, pattern: [0,2,1,3], decay: 3, len: 48 } },
+  { id: 'd3', title: '頂樓晚風', artist: '小島 Island', source: 'demo', demo: { key: 'F', bpm: 96, pattern: [0,1,3,1,2,1], decay: 4, len: 40, lift: 2 } },
+  { id: 'd4', title: '夜市霓虹', artist: '小島 Island', source: 'demo', demo: { key: 'G', bpm: 128, pattern: [0,3,1,3,2,3], decay: 7, len: 36 } },
+  { id: 'd5', title: '慢慢來', artist: '陳早早', source: 'demo', demo: { key: 'D', bpm: 72, pattern: [0,1,2,1], decay: 2.5, len: 50, lift: 2 } },
+  { id: 'd6', title: '週五下班', artist: '陳早早', source: 'demo', demo: { key: 'E', bpm: 116, pattern: [0,2,3,2,1,2], decay: 6, len: 38 } },
+  { id: 'd7', title: '一個人的海邊', artist: '綠燈樂團', source: 'demo', demo: { key: 'D', bpm: 90, pattern: [3,2,1,0], decay: 3.5, len: 44, lift: 2 } }
+];
+const savedMeta = store.get('meta', {});
+const savedYt = store.get('yt', []);
+const lib = [...DEFAULT_LIB, ...savedYt].map(t => ({ checked: true, liked: false, skips: 0, plays: 0, ab: null, ...t, ...(savedMeta[t.id] || {}) }));
+{ const order = store.get('order', null); if (order) { const pos = id => { const i = order.indexOf(id); return i < 0 ? 1e9 : i; }; lib.sort((a, b) => pos(a.id) - pos(b.id)); } }
+if (!store.get('seeded', false)) { const l = lib.find(t => t.id === 'd3'); l.liked = true; lib.find(t => t.id === 'd4').skips = 2; }
+
+const settings = Object.assign({ mode: 'order', noSameArtist: true, avoidRecent: true, recentN: 3, skipPenalty: true, abTimes: 3, mascot: 'astronaut' }, store.get('settings2', {}));
+
+function persist() {
+  const meta = {}; lib.forEach(t => meta[t.id] = { checked: t.checked, liked: t.liked, skips: t.skips, plays: t.plays, ab: t.ab });
+  store.set('meta', meta); store.set('settings2', settings); store.set('seeded', true); store.set('order', lib.map(t => t.id));
+  store.set('yt', lib.filter(t => t.source === 'yt').map(({ id, title, artist, source, ref }) => ({ id, title, artist, source, ref })));
+}
+
+const MODE_DESC = {
+  order: '照曲庫順序一首接一首，到底再從頭。',
+  shuffle: '隨機挑歌，但會遵守下面勾選的規則。',
+  weighted: '隨機挑歌，按愛心的歌出現機率 ×3，跳過越多次的歌越少出現。'
+};
+
+function weightOf(t) {
+  let w = t.liked ? 3 : 1;
+  if (settings.skipPenalty) w = w / (1 + t.skips * 0.75);
+  return w;
+}
+
+// 從候選裡選下一首，回傳 { track, why }
+function pickNext(prev, recent) {
+  const playable = lib.filter(t => t.checked && (t.source !== 'yt' || BACKENDS.yt));
+  if (!playable.length) return null;
+  if (settings.mode === 'order') {
+    const i = prev ? playable.indexOf(prev) : -1;
+    return { track: playable[(i + 1) % playable.length], why: '' };
+  }
+  let pool = playable.filter(t => t !== prev), why = [];
+  if (settings.avoidRecent) {
+    const recentIds = recent.slice(-settings.recentN).map(t => t.id);
+    const p = pool.filter(t => !recentIds.includes(t.id));
+    if (p.length) pool = p;
+  }
+  if (settings.noSameArtist && prev) {
+    const p = pool.filter(t => t.artist !== prev.artist);
+    if (p.length) { pool = p; why.push('換歌手'); } else why.push('規則放寬');
+  }
+  if (!pool.length) pool = playable;
+  const weighted = settings.mode === 'weighted';
+  const ws = pool.map(t => weighted ? weightOf(t) : 1);
+  let r = Math.random() * ws.reduce((a, b) => a + b, 0), k = 0;
+  while (r > ws[k] && k < pool.length - 1) { r -= ws[k]; k++; }
+  const t = pool[k];
+  if (weighted) {
+    const w = weightOf(t);
+    if (t.liked) why.unshift('愛心');
+    if (settings.skipPenalty && t.skips) why.push('跳過 ' + t.skips + ' 次');
+    why.push('<b>×' + w.toFixed(2).replace(/\.?0+$/, '') + '</b>');
+  }
+  return { track: t, why: why.join(' · ') || '隨機' };
+}
+
+/* ============ 播放控制 ============ */
+const state = { current: null, queue: [], history: [], abLeft: 0, loading: false };
+const QUEUE_LEN = 6;
+
+function fillQueue() {
+  const recent = [...state.history];
+  if (state.current) recent.push(state.current);
+  let prev = state.queue.length ? state.queue[state.queue.length - 1].track : state.current;
+  state.queue.forEach(q => recent.push(q.track));
+  while (state.queue.length < QUEUE_LEN) {
+    const p = pickNext(prev, recent); if (!p) break;
+    state.queue.push(p); recent.push(p.track); prev = p.track;
+  }
+}
+function reshuffle() { state.queue = []; fillQueue(); renderQueue(); }
+
+function backendFor(t) { return BACKENDS[t.source]; }
+
+async function playTrack(t, autoplay = true) {
+  const old = state.current && backendFor(state.current);
+  if (old) old.pause();
+  if (state.current) { state.history.push(state.current); if (state.history.length > 50) state.history.shift(); }
+  state.current = t; state.abLeft = settings.abTimes;
+  if (settings.mode === 'order') { state.queue = []; fillQueue(); }
+  const be = backendFor(t);
+  try {
+    state.loading = true; be.show(); await be.load(t); state.loading = false;
+    be.onEnded = onTrackEnded;
+    if (autoplay) be.play();
+  } catch (e) { state.loading = false; toast(e.message); }
+  renderNow(); renderLibrary(); renderQueue(); syncPlayButton(); persist();
+}
+
+function onTrackEnded() {
+  if (!state.current) return;
+  state.current.plays++;
+  next(false);
+}
+
+function next(manual = true) {
+  const cur = state.current;
+  if (manual && cur) {
+    const be = backendFor(cur), d = be.duration();
+    if (d && be.time() < d / 2) { cur.skips++; toast(`「${cur.title}」記一次跳過（共 ${cur.skips} 次）`); }
+  }
+  if (!state.queue.length) fillQueue();
+  const n = state.queue.shift();
+  if (n) state.queue = state.queue.filter(q => q.track !== n.track);
+  fillQueue();
+  if (n) playTrack(n.track); else renderQueue();
+}
+
+function prev() {
+  const be = state.current && backendFor(state.current);
+  if (be && be.time() > 3) { be.seek(0); return; }
+  const p = state.history.pop();
+  if (!p) { be && be.seek(0); return; }
+  if (state.current) state.queue.unshift({ track: state.current, why: '剛才那首' });
+  state.queue.length = Math.min(state.queue.length, QUEUE_LEN);
+  const cur = state.current; state.current = null;
+  playTrack(p).then(() => { renderQueue(); });
+}
+
+function togglePlay() {
+  if (!state.current) { next(false); return; }
+  const be = backendFor(state.current);
+  be.isPlaying() ? be.pause() : be.play();
+  syncPlayButton();
+}
+
+/* 每 100ms 檢查段落循環與更新進度 */
+function tick() {
+  const t = state.current; if (t && !state.loading) {
+    const be = backendFor(t), cur = be.time(), d = be.duration() || 0;
+    if (t.ab && t.ab.on && be.isPlaying() && cur >= t.ab.b) {
+      if (state.abLeft === -1 || state.abLeft > 0) {
+        if (state.abLeft > 0) state.abLeft--;
+        be.seek(t.ab.a);
+      }
+    }
+    const pct = d ? Math.min(100, cur / d * 100) : 0;
+    drawDial(pct); updateHero(cur, d, pct);
+    $('#t-cur').textContent = fmt(cur); $('#t-dur').textContent = fmt(d);
+    renderAB(d);
+  }
+}
+
+/* ============ 畫面 ============ */
+function syncPlayButton() {
+  const playing = state.current && backendFor(state.current).isPlaying();
+  $('#play-ico').innerHTML = playing ? '<rect x="13" y="10" width="8" height="28" rx="3" fill="currentColor"/><rect x="27" y="10" width="8" height="28" rx="3" fill="currentColor"/>' : '<path d="M16 10 L38 24 L16 38Z" fill="currentColor"/>';
+  $('#play-lbl').textContent = playing ? '暫停' : '播放';
+  $('#btn-play').setAttribute('aria-label', playing ? '暫停' : '播放');
+  $('#mascot-card').classList.toggle('playing', !!playing);
+  updateMediaSession(!!playing);
+}
+function renderNow() {
+  const t = state.current;
+  $('#now-title').textContent = t ? t.title : '按播放開始';
+  $('#now-artist').textContent = t ? t.artist : '—';
+  $('#now-src').textContent = t ? SRC_LABEL[t.source] : '尚未播放';
+  const li = t ? lib.indexOf(t) : -1, on = lib.filter(x => x.checked);
+  $('#trk-code').textContent = t ? `No.${String(li + 1).padStart(2, '0')}` : '尚未播放';
+  $('#trk-pos').textContent = `勾選 ${on.length} 首`;
+  drawArt(t);
+  if (!t) drawDial(0);
+  $('#btn-like').classList.toggle('on', !!(t && t.liked));
+  $('#btn-loopq').classList.toggle('on', !!(t && t.ab && t.ab.on && t.ab.b != null));
+  $('#ab-song').textContent = t ? t.title : '尚未播放';
+  $('#btn-ab-toggle').textContent = t && t.ab && t.ab.b != null && !t.ab.on ? '開啟循環' : '暫停循環';
+}
+function drawDial(pct) {
+  $('#prog-arc').setAttribute('stroke-dasharray', pct + ' 100');
+  const ang = (pct / 100) * 2 * Math.PI - Math.PI / 2;
+  const kx = 200 + 162 * Math.cos(ang), ky = 200 + 162 * Math.sin(ang);
+  $('#knob').setAttribute('transform', `translate(${kx.toFixed(1)} ${ky.toFixed(1)})`);
+  const hx = 200 + 178 * Math.cos(ang), hy = 200 + 178 * Math.sin(ang);
+  const h = $('#hand'); h.setAttribute('x1', (200 - 40 * Math.cos(ang)).toFixed(1)); h.setAttribute('y1', (200 - 40 * Math.sin(ang)).toFixed(1));
+  h.setAttribute('x2', hx.toFixed(1)); h.setAttribute('y2', hy.toFixed(1));
+  $('#dial').setAttribute('aria-valuenow', Math.round(pct));
+}
+/* ============ 吉祥物插圖（可在畫面上切換）============ */
+const HEADPHONES = (y = 80) => `
+  <rect class="m-d" x="33" y="${y}" width="19" height="32" rx="8"/><rect class="m-g" x="37.5" y="${y + 6}" width="10" height="20" rx="4"/>
+  <rect class="m-d" x="148" y="${y}" width="19" height="32" rx="8"/><rect class="m-g" x="152.5" y="${y + 6}" width="10" height="20" rx="4"/>`;
+const PET_BODY = `
+  <path class="m-w" d="M60 188 Q56 132 100 126 Q144 132 140 188Z"/>
+  <ellipse class="m-w" cx="84" cy="188" rx="13" ry="7"/><ellipse class="m-w" cx="116" cy="188" rx="13" ry="7"/>`;
+const EYES = (y) => `
+  <ellipse class="m-d" cx="80" cy="${y}" rx="7.5" ry="9.5"/><ellipse class="m-d" cx="120" cy="${y}" rx="7.5" ry="9.5"/>
+  <circle cx="82.5" cy="${y - 4}" r="2.6" fill="#8cc4ff"/><circle cx="122.5" cy="${y - 4}" r="2.6" fill="#8cc4ff"/>`;
+const MASCOTS = {
+  astronaut: { name: '太空人', svg: `
+    <rect class="m-w" x="70" y="160" width="24" height="28" rx="10"/><rect class="m-w" x="106" y="160" width="24" height="28" rx="10"/>
+    <rect class="m-g" x="73" y="179" width="18" height="5" rx="2.5"/><rect class="m-g" x="109" y="179" width="18" height="5" rx="2.5"/>
+    <rect class="m-w" x="58" y="108" width="84" height="64" rx="26"/>
+    <path class="m-w" d="M64 122 Q38 128 40 152 Q43 162 55 157 Q58 142 72 139Z"/>
+    <path class="m-w" d="M136 120 Q162 110 166 88 Q167 78 157 79 Q150 100 130 107Z"/>
+    <rect class="m-d" x="80" y="128" width="40" height="24" rx="7"/>
+    <circle class="m-g" cx="90" cy="140" r="3.5"/><rect class="m-g" x="98" y="135" width="15" height="3.5" rx="1.7"/><rect class="m-g" x="98" y="142" width="9" height="3.5" rx="1.7"/>
+    <circle class="m-w" cx="100" cy="72" r="52"/>
+    <ellipse class="m-d" cx="100" cy="76" rx="38" ry="32"/>
+    <path class="m-gs" d="M72 72 Q74 56 90 50" stroke-width="3"/>
+    <path class="m-star" d="M112 60 l2.2 5.5 5.5 2.2 -5.5 2.2 -2.2 5.5 -2.2 -5.5 -5.5 -2.2 5.5 -2.2z"/>
+    <circle class="m-star" cx="92" cy="92" r="2.2"/><circle class="m-star" cx="124" cy="86" r="1.6"/><path class="m-gs" d="M98 96 L122 72" stroke-width="2"/>
+    ${HEADPHONES(56)}` },
+  cat: { name: '喵咪', svg: `
+    <path class="m-w" d="M136 170 Q178 174 175 136 Q173 120 162 125 Q167 152 134 152Z"/>
+    ${PET_BODY}
+    <path class="m-w" d="M48 92 L52 34 L84 58 Q100 53 116 58 L148 34 L152 92 Q152 134 100 134 Q48 134 48 92Z"/>
+    <path class="m-g" d="M59 50 L60 70 L73 60Z"/><path class="m-g" d="M141 50 L140 70 L127 60Z"/>
+    ${EYES(92)}
+    <path class="m-d" d="M95 104 h10 l-5 6z"/>
+    <path class="m-s" d="M100 110 q-6 8 -12 2 M100 110 q6 8 12 2" stroke-width="3"/>
+    <path class="m-gs" stroke-width="2.5" d="M66 106 H48 M66 113 L50 119 M134 106 H152 M134 113 L150 119"/>
+    <path class="m-s" d="M42 82 Q44 24 100 22 Q156 24 158 82" stroke-width="7"/>
+    ${HEADPHONES(78)}` },
+  dog: { name: '小狗', svg: `
+    <path class="m-w" d="M134 160 Q160 150 166 126 Q168 116 160 118 Q156 138 132 146Z"/>
+    ${PET_BODY}
+    <path class="m-gs" d="M72 132 Q100 144 128 132"/><circle class="m-g" cx="100" cy="141" r="5.5"/>
+    <ellipse class="m-w" cx="100" cy="88" rx="50" ry="46"/>
+    <path class="m-d" d="M58 56 Q34 58 32 98 Q32 118 50 114 Q58 90 66 68Z"/>
+    <path class="m-d" d="M142 56 Q166 58 168 98 Q168 118 150 114 Q142 90 134 68Z"/>
+    ${EYES(84)}
+    <ellipse class="m-w" cx="100" cy="108" rx="23" ry="17"/>
+    <ellipse class="m-d" cx="100" cy="100" rx="9" ry="6"/>
+    <path class="m-s" stroke-width="3" d="M100 106 v6 q-6 6 -12 0 M100 112 q6 6 12 0"/>
+    <path class="m-g" d="M95 117 q5 11 10 0z"/>
+    <path class="m-s" d="M48 80 Q50 28 100 28 Q150 28 152 80" stroke-width="7"/>
+    ${HEADPHONES(76)}` },
+  rabbit: { name: '兔兔', svg: `
+    ${PET_BODY}
+    <circle class="m-w" cx="140" cy="176" r="10"/>
+    <path class="m-w" d="M78 62 Q64 6 82 4 Q99 6 93 60Z"/><path class="m-w" d="M107 60 Q103 6 122 6 Q137 10 122 64Z"/>
+    <path class="m-g" d="M81 52 Q74 18 82 15 Q89 18 88 52Z"/><path class="m-g" d="M112 52 Q112 20 121 17 Q128 22 119 54Z"/>
+    <ellipse class="m-w" cx="100" cy="96" rx="47" ry="40"/>
+    ${EYES(94)}
+    <circle class="m-g" cx="68" cy="110" r="6" opacity=".55"/><circle class="m-g" cx="132" cy="110" r="6" opacity=".55"/>
+    <path class="m-d" d="M96 106 h8 l-4 5z"/>
+    <path class="m-s" d="M100 111 q-5 7 -10 2 M100 111 q5 7 10 2" stroke-width="3"/>
+    <path class="m-s" d="M50 94 Q50 50 100 48 Q150 50 150 94" stroke-width="7"/>
+    ${HEADPHONES(88)}` },
+  bear: { name: '小熊', svg: `
+    ${PET_BODY}
+    <circle class="m-w" cx="60" cy="52" r="17"/><circle class="m-w" cx="140" cy="52" r="17"/>
+    <circle class="m-g" cx="60" cy="52" r="7"/><circle class="m-g" cx="140" cy="52" r="7"/>
+    <ellipse class="m-w" cx="100" cy="90" rx="50" ry="45"/>
+    ${EYES(86)}
+    <ellipse class="m-w" cx="100" cy="110" rx="20" ry="15"/>
+    <ellipse class="m-d" cx="100" cy="104" rx="8" ry="5.5"/>
+    <path class="m-s" d="M100 109 v5 q-5 5 -10 0 M100 114 q5 5 10 0" stroke-width="3"/>
+    <path class="m-g" d="M88 150 l12 -8 12 8 -12 8z"/>
+    <path class="m-s" d="M48 84 Q50 34 100 34 Q150 34 152 84" stroke-width="7"/>
+    ${HEADPHONES(80)}` }
+};
+const MASCOT_EN = { astronaut: 'Astronaut', cat: 'Kitty', dog: 'Puppy', rabbit: 'Bunny', bear: 'Teddy' };
+const CLAY_DEFS = `<defs>
+  <radialGradient id="clay" cx="32%" cy="28%" r="80%"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eef0f4"/><stop offset="1" stop-color="#c3c7cf"/></radialGradient>
+  <radialGradient id="visor" cx="32%" cy="28%" r="85%"><stop offset="0" stop-color="#33384f"/><stop offset=".5" stop-color="#11131c"/><stop offset="1" stop-color="#05060a"/></radialGradient>
+</defs>`;
+/* 霓虹膠囊的圖案跟著角色換 */
+const NEON = {
+  astronaut: [`<circle class="ln" cx="52" cy="70" r="20"/><path class="ln" d="M38 60 q8 4 6 12 q10 2 16 -6"/><path class="ln" d="M80 24 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z"/><path class="ln" d="M70 96 L98 76"/>`,
+    `<circle class="ln" cx="246" cy="58" r="26"/><ellipse class="ln" cx="246" cy="58" rx="40" ry="9" transform="rotate(-18 246 58)"/><circle class="fl" cx="238" cy="50" r="5"/><circle class="fl" cx="254" cy="66" r="3.5"/><circle class="fl" cx="214" cy="20" r="2"/>`],
+  cat: [`<path class="ln" d="M26 62 Q48 38 72 62 Q48 86 26 62Z"/><path class="ln" d="M72 62 L90 48 L90 76Z"/><circle class="fl" cx="40" cy="58" r="3"/><path class="ln" d="M52 50 q6 12 0 24"/><circle class="ln" cx="66" cy="26" r="4"/><circle class="ln" cx="80" cy="16" r="2.5"/>`,
+    `<circle class="ln" cx="248" cy="56" r="26"/><path class="ln" d="M225 45 Q248 60 272 45 M223 62 Q248 78 273 62 M236 32 Q254 56 238 81"/><path class="ln" d="M228 74 Q210 88 218 100"/><circle class="fl" cx="208" cy="22" r="4"/><circle class="fl" cx="201" cy="14" r="2"/><circle class="fl" cx="208" cy="11" r="2"/><circle class="fl" cx="215" cy="14" r="2"/>`],
+  dog: [`<line class="ln" x1="42" y1="76" x2="72" y2="44"/><circle class="ln" cx="34" cy="74" r="7"/><circle class="ln" cx="42" cy="85" r="7"/><circle class="ln" cx="72" cy="34" r="7"/><circle class="ln" cx="81" cy="45" r="7"/>`,
+    `<circle class="ln" cx="248" cy="58" r="24"/><path class="ln" d="M226 48 Q248 60 270 48 M226 70 Q248 58 270 70"/><circle class="fl" cx="208" cy="24" r="5"/><circle class="fl" cx="200" cy="14" r="2.5"/><circle class="fl" cx="208" cy="10" r="2.5"/><circle class="fl" cx="216" cy="14" r="2.5"/>`],
+  rabbit: [`<path class="ln" d="M32 90 Q50 64 64 46 Q74 38 78 48 Q62 68 32 90Z"/><path class="ln" d="M72 42 L74 24 M75 44 L90 34 M77 47 L92 48"/><path class="ln" d="M46 74 l7 4 M56 62 l7 4"/>`,
+    `<path class="ln" d="M256 28 A30 30 0 1 0 266 86 A24 24 0 1 1 256 28Z"/><path class="ln" d="M214 22 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z"/><circle class="fl" cx="280" cy="30" r="2.5"/>`],
+  bear: [`<path class="ln" d="M32 54 Q30 92 56 92 Q82 92 80 54 Z"/><rect class="ln" x="28" y="42" width="56" height="11" rx="5.5"/><path class="ln" d="M44 68 q12 8 24 0"/><path class="fl" d="M60 53 q5 9 0 14 q-5 -5 0 -14"/>`,
+    `<path class="ln" d="M248 86 C210 62 220 30 248 47 C276 30 286 62 248 86Z"/><ellipse class="ln" cx="212" cy="26" rx="8" ry="6"/><path class="ln" d="M207 20 q-5 -9 4 -7 M217 20 q5 -9 -4 -7 M210 26 v-0.5"/>`]
+};
+function renderMascot() {
+  const key = MASCOTS[settings.mascot] ? settings.mascot : 'astronaut';
+  const nn = NEON[settings.mascot] || NEON.astronaut; $('#neon-l').innerHTML = nn[0]; $('#neon-r').innerHTML = nn[1];
+  $('#mascot-stage').innerHTML = `<svg viewBox="0 0 200 200" role="img" aria-label="${MASCOTS[key].name}">${CLAY_DEFS}${MASCOTS[key].svg}<ellipse cx="78" cy="${key === 'astronaut' ? 40 : 56}" rx="16" ry="7" fill="#fff" opacity=".75" transform="rotate(-30 78 50)"/></svg>`;
+  $('#mascot-en').textContent = MASCOT_EN[key]; $('#mascot-name').textContent = MASCOTS[key].name;
+  const pick = $('#mascot-pick'); pick.innerHTML = '';
+  Object.entries(MASCOTS).forEach(([k, m]) => {
+    const b = document.createElement('button'); b.className = 'mini' + (k === key ? ' on' : ''); b.textContent = m.name;
+    b.setAttribute('aria-pressed', k === key); b.onclick = () => { settings.mascot = k; persist(); renderMascot(); };
+    pick.appendChild(b);
+  });
+}
+function buildTicks() {
+  let s = '';
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * 2 * Math.PI - Math.PI / 2, long = i % 5 === 0;
+    const r1 = long ? 128 : 134, r2 = 142;
+    s += `<line x1="${(200 + r1 * Math.cos(a)).toFixed(1)}" y1="${(200 + r1 * Math.sin(a)).toFixed(1)}" x2="${(200 + r2 * Math.cos(a)).toFixed(1)}" y2="${(200 + r2 * Math.sin(a)).toFixed(1)}" class="${long ? 'g-glow' : 'g-dim'}" stroke-width="${long ? 3 : 1.5}" stroke-linecap="round"/>`;
+  }
+  for (let n = 1; n <= 12; n++) { const a = n / 12 * 2 * Math.PI - Math.PI / 2; s += `<text class="g-txt" x="${(200 + 106 * Math.cos(a)).toFixed(1)}" y="${(200 + 106 * Math.sin(a)).toFixed(1)}">${n}</text>`; }
+  $('#ticks').innerHTML = s;
+}
+function updateHero(cur, d, pct) {
+  const c = Math.max(0, cur || 0);
+  $('#big-m').textContent = String(Math.floor(c / 60)).padStart(2, '0');
+  $('#big-s').textContent = String(Math.floor(c % 60)).padStart(2, '0');
+  $('#now-time').textContent = d ? `${fmt(c)} / ${fmt(d)}` : '';
+  $('#pct').textContent = Math.round(pct) + '%';
+  $('#water').style.height = (30 + pct * 0.6) + '%';
+}
+function drawArt() {}
+function renderBattery() {
+  const t = state.current, ab = t && t.ab, cells = [...$('#batt').children];
+  let on = 0, label = '–';
+  if (ab && ab.b != null && ab.on) {
+    if (state.abLeft === -1) { on = 5; label = '∞'; }
+    else { on = Math.ceil(state.abLeft / Math.max(1, settings.abTimes) * 5); label = String(state.abLeft); }
+  }
+  cells.forEach((c, i) => c.classList.toggle('off', i >= on));
+  $('#batt-n').textContent = label;
+}
+function renderDate() {
+  const d = new Date(), en = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], zh = '日一二三四五六';
+  $('#day-word').textContent = en[d.getDay()];
+  $('#hand-date').textContent = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  $('#hand-sub').textContent = '';
+}
+function renderAB(d) {
+  const t = state.current, ab = t && t.ab, arc = $('#ab-arc');
+  renderBattery();
+  if (!ab || !d) { arc.setAttribute('opacity', 0); $('#ab-label').textContent = ab ? '' : '未設定'; return; }
+  const show = ab.on && ab.b != null;
+  arc.setAttribute('opacity', show ? 0.9 : 0);
+  if (ab.b != null) { arc.setAttribute('stroke-dasharray', `${(ab.b - ab.a) / d * 100} 100`); arc.setAttribute('stroke-dashoffset', -(ab.a / d * 100)); }
+  const left = state.abLeft === -1 ? '無限次' : `剩 ${state.abLeft} 次`;
+  $('#ab-label').textContent = ab.b == null ? `A ${fmt(ab.a)} · 等待設定 B` : `${fmt(ab.a)} – ${fmt(ab.b)} · ${ab.on ? left : '已暫停'}`;
+}
+function renderQueue() {
+  const ol = $('#queue'); ol.innerHTML = '';
+  const nx = state.queue[0];
+  $('#next-title').textContent = nx ? nx.track.title : '沒有勾選的歌';
+  $('#next-artist').textContent = nx ? nx.track.artist : '';
+  const open = !$('#queue-wrap').hidden;
+  $('#btn-queue-toggle').textContent = open ? '收起' : `顯示全部（${state.queue.length}）`;
+  state.queue.forEach((q, i) => {
+    const li = document.createElement('li'); li.className = 'item';
+    li.innerHTML = `<span class="idx num">${String(i + 1).padStart(2, "0")}</span><button class="t" style="border:none;padding:0;text-align:left"><div class="t"></div><div class="a"></div></button><span class="why">${q.why}</span>`;
+    li.querySelector('.t .t').textContent = q.track.title;
+    li.querySelector('.a').textContent = q.track.artist + (q.track.source === 'yt' ? ' · YouTube' : '');
+    li.querySelector('button').onclick = () => { state.queue.splice(i, 1); fillQueue(); playTrack(q.track); renderQueue(); };
+    ol.appendChild(li);
+  });
+  if (!state.queue.length) ol.innerHTML = '<li class="tiny">沒有勾選任何歌。到歌單勾幾首就會排進來。</li>';
+}
+function renderLibrary() {
+  const ul = $('#library'); ul.innerHTML = '';
+  lib.forEach(t => {
+    const li = document.createElement('li'); li.dataset.id = t.id; li.className = 'item lib-item' + (t === state.current ? ' current' : '') + (t.checked ? '' : ' off');
+    const unavailable = t.source === 'yt' && !BACKENDS.yt;
+    li.innerHTML = `<span class="grip" title="拖曳調整順序" aria-label="拖曳調整順序">⠿</span><input type="checkbox" class="pick" id="pick-${t.id}" ${t.checked ? 'checked' : ''} aria-label="勾選要播放"><button class="heart${t.liked ? ' liked' : ''}" aria-label="愛心">${t.liked ? '♥' : '♡'}</button>
+      <button class="t" style="border:none;padding:0;text-align:left${unavailable ? ';opacity:.5' : ''}"><div class="t"></div><div class="a"></div></button>
+      <span class="why num"></span><button class="ab-btn${t.ab && t.ab.b != null ? ' set' : ''}" aria-label="調整「${t.title.replace(/"/g, '')}」的 A–B 循環">AB</button>`;
+    li.querySelector('.t .t').textContent = t.title;
+    li.querySelector('.a').textContent = t.artist + ' · ' + SRC_LABEL[t.source] + (unavailable ? '（這裡無法播放）' : '');
+    const bits = []; if (t.skips) bits.push('跳過 ' + t.skips); if (t.plays) bits.push('播完 ' + t.plays);
+    li.querySelector('.why').textContent = bits.join(' · ');
+    li.querySelector('.grip').addEventListener('pointerdown', e => startDrag(e, li));
+    li.querySelector('.pick').onchange = e => { t.checked = e.target.checked; persist(); renderLibrary(); reshuffle(); };
+    li.querySelector('.ab-btn').onclick = () => { if (unavailable) return; if (t !== state.current) playTrack(t); openAB(); };
+    li.querySelector('.heart').onclick = () => { t.liked = !t.liked; persist(); renderLibrary(); renderNow(); reshuffle(); };
+    li.querySelector('button.t').onclick = () => { if (!unavailable) playTrack(t); };
+    ul.appendChild(li);
+  });
+  if (typeof updateSaveHint === 'function' && $('#save-yt-hint')) updateSaveHint();
+  $('#lib-count').textContent = `已勾選 ${lib.filter(t => t.checked).length} / ${lib.length} 首`;
+  $('#trk-pos').textContent = `勾選 ${lib.filter(x => x.checked).length} 首`;
+}
+/* 拖曳排序：按住把手移動，放開後依新順序更新歌單與接下來的佇列 */
+function startDrag(e, li) {
+  e.preventDefault();
+  const ul = $('#library');
+  li.classList.add('dragging'); document.body.classList.add('is-dragging');
+  const move = ev => {
+    const others = [...ul.children].filter(x => x !== li);
+    const after = others.find(x => { const r = x.getBoundingClientRect(); return ev.clientY < r.top + r.height / 2; });
+    if (after) { if (li.nextSibling !== after) ul.insertBefore(li, after); }
+    else if (ul.lastChild !== li) ul.appendChild(li);
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    li.classList.remove('dragging'); document.body.classList.remove('is-dragging');
+    const ids = [...ul.children].map(x => x.dataset.id);
+    const changed = ids.some((id, i) => lib[i].id !== id);
+    lib.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    persist(); renderLibrary();
+    if (changed) { reshuffle(); toast('已更新順序'); }
+  };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+function renderSettings() {
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === settings.mode));
+  $('#mode-desc').textContent = MODE_DESC[settings.mode];
+  $('#mode-now').textContent = '目前：' + { order: '依序', shuffle: '規則式隨機', weighted: '權重播放' }[settings.mode];
+  $('#r-artist').checked = settings.noSameArtist; $('#r-recent').checked = settings.avoidRecent;
+  $('#r-recent-n').value = settings.recentN; $('#r-skip').checked = settings.skipPenalty;
+  $('#ab-times').value = String(settings.abTimes);
+}
+function updateYtStatus() {
+  const yt = window.__ytBackend;
+  const el = $('#yt-status');
+  if (yt && yt.available) { BACKENDS.yt = yt; el.textContent = 'YouTube 播放器可以使用。加入的歌會用官方嵌入播放器播放，播放器畫面會顯示在「正在播放」裡。'; $('#btn-add-yt').disabled = false; }
+  else { el.textContent = '目前這個頁面載不到 YouTube 播放器（例如在 Claude 的預覽視窗裡會被擋）。把這個檔案放到網站上（例如 GitHub Pages）或用本機伺服器開啟就能用。示範音軌和本機音檔不受影響。'; }
+  renderLibrary(); reshuffle();
+}
+
+/* ============ 事件 ============ */
+$('#btn-play').onclick = togglePlay;
+$('#btn-queue-toggle').onclick = () => { const w = $('#queue-wrap'); w.hidden = !w.hidden; $('#btn-queue-toggle').setAttribute('aria-expanded', String(!w.hidden)); renderQueue(); };
+$('#btn-all').onclick = () => { lib.forEach(t => t.checked = true); persist(); renderLibrary(); reshuffle(); };
+$('#btn-none').onclick = () => { lib.forEach(t => t.checked = false); persist(); renderLibrary(); reshuffle(); };
+$('#btn-next').onclick = () => next(true);
+$('#btn-prev').onclick = prev;
+$('#btn-reshuffle').onclick = () => { reshuffle(); toast('已重新排好接下來的歌'); };
+$('#btn-like').onclick = () => { const t = state.current; if (!t) return; t.liked = !t.liked; persist(); renderNow(); renderLibrary(); reshuffle(); toast(t.liked ? '已按愛心，出現機率 ×3' : '已取消愛心'); };
+$('#btn-a').onclick = () => { const t = state.current; if (!t) return toast('先播一首歌'); const now = backendFor(t).time(); t.ab = { a: now, b: null, on: true }; state.abLeft = settings.abTimes; persist(); renderNow(); };
+$('#btn-b').onclick = () => {
+  const t = state.current; if (!t) return toast('先播一首歌');
+  if (!t.ab) return toast('先設 A 點');
+  const now = backendFor(t).time(); if (now <= t.ab.a + 0.5) return toast('B 點要在 A 點之後');
+  t.ab.b = now; t.ab.on = true; state.abLeft = settings.abTimes; backendFor(t).seek(t.ab.a); persist(); renderNow(); renderLibrary();
+  toast('開始循環這一段');
+};
+$('#btn-ab-clear').onclick = () => { const t = state.current; if (!t) return; t.ab = null; persist(); renderNow(); renderLibrary(); };
+$('#btn-loopq').onclick = () => { if (!state.current) return toast('先播一首歌'); openAB(); };
+$('#btn-ab-toggle').onclick = () => { const t = state.current; if (!t || !t.ab || t.ab.b == null) return toast('先設好 A、B 兩點'); t.ab.on = !t.ab.on; state.abLeft = settings.abTimes; persist(); renderNow(); };
+function openAB() { $('#ab-sheet').hidden = false; $('#ab-backdrop').hidden = false; renderNow(); $('#btn-ab-close').focus(); }
+function closeAB() { $('#ab-sheet').hidden = true; $('#ab-backdrop').hidden = true; }
+$('#btn-ab-close').onclick = closeAB; $('#ab-backdrop').onclick = closeAB;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAB(); });
+$('#ab-times').onchange = e => { settings.abTimes = +e.target.value; state.abLeft = settings.abTimes; persist(); };
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { settings.mode = b.dataset.mode; persist(); renderSettings(); reshuffle(); });
+$('#r-artist').onchange = e => { settings.noSameArtist = e.target.checked; persist(); reshuffle(); };
+$('#r-recent').onchange = e => { settings.avoidRecent = e.target.checked; persist(); reshuffle(); };
+$('#r-recent-n').onchange = e => { settings.recentN = Math.max(1, Math.min(20, +e.target.value || 3)); persist(); reshuffle(); };
+$('#r-skip').onchange = e => { settings.skipPenalty = e.target.checked; persist(); reshuffle(); };
+
+const dial = $('#dial');
+dial.addEventListener('pointerdown', e => {
+  const t = state.current; if (!t) return;
+  const be = backendFor(t), r = dial.getBoundingClientRect();
+  const x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2);
+  let a = Math.atan2(y, x) + Math.PI / 2; if (a < 0) a += 2 * Math.PI;
+  be.seek(a / (2 * Math.PI) * be.duration());
+});
+dial.addEventListener('keydown', e => {
+  const t = state.current; if (!t) return; const be = backendFor(t);
+  if (e.key === 'ArrowUp') { e.preventDefault(); be.seek(be.time() + 5); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); be.seek(be.time() - 5); }
+});
+dial.setAttribute('tabindex', '0');
+
+$('#btn-add-yt').onclick = () => {
+  const raw = $('#yt-url').value.trim();
+  const m = raw.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|music\.youtube\.com\/watch\?v=)([\w-]{11})/) || raw.match(/^([\w-]{11})$/);
+  if (!m) return toast('看不出影片 ID，請貼完整的 YouTube 網址');
+  const t = { id: 'yt-' + m[1], title: $('#yt-title').value.trim() || 'YouTube 影片', artist: $('#yt-artist').value.trim() || '未知歌手', source: 'yt', ref: m[1], checked: true, liked: false, skips: 0, plays: 0, ab: null };
+  if (lib.some(x => x.id === t.id)) return toast('這首已經在曲庫裡了');
+  lib.push(t); persist(); renderLibrary(); reshuffle();
+  $('#yt-url').value = $('#yt-title').value = $('#yt-artist').value = '';
+  toast(BACKENDS.yt ? `已加入「${t.title}」` : `已加入「${t.title}」，在能載入 YouTube 的地方開啟才能播`);
+};
+$('#file-in').onchange = async e => {
+  for (const f of e.target.files) {
+    const id = 'local-' + Math.random().toString(36).slice(2, 9);
+    localFiles.set(id, await f.arrayBuffer());
+    const name = f.name.replace(/\.[^.]+$/, ''), parts = name.split(' - ');
+    lib.push({ id, title: parts[1] || name, artist: parts[1] ? parts[0] : '本機', source: 'local', checked: true, liked: false, skips: 0, plays: 0, ab: null });
+  }
+  e.target.value = ''; renderLibrary(); reshuffle(); toast('已加入本機音檔（重新整理頁面後需要重新加入）');
+};
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, select, textarea')) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'ArrowRight') next(true);
+});
+
+/* ============ 存成 YouTube 播放清單（YouTube Data API v3）============
+   用 Google Identity Services 取得使用者授權，再用 playlists.insert + playlistItems.insert 建清單。
+   每次 insert 約 50 單位額度，預設每日 10,000 單位，大約 190 首。 */
+const YT_SCOPE = 'https://www.googleapis.com/auth/youtube';
+let gisLoading = null, ytToken = null, ytTokenExp = 0;
+function loadGis() {
+  if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if (gisLoading) return gisLoading;
+  gisLoading = new Promise((ok, bad) => {
+    const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    const timer = setTimeout(() => bad(new Error('blocked')), 8000);
+    s.onload = () => { clearTimeout(timer); ok(); }; s.onerror = () => { clearTimeout(timer); bad(new Error('blocked')); };
+    document.head.appendChild(s);
+  });
+  gisLoading.catch(() => { gisLoading = null; });
+  return gisLoading;
+}
+function getToken(clientId) {
+  if (ytToken && Date.now() < ytTokenExp - 60000) return Promise.resolve(ytToken);
+  return new Promise((ok, bad) => {
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: YT_SCOPE,
+      callback: r => { if (r.error) return bad(new Error(r.error)); ytToken = r.access_token; ytTokenExp = Date.now() + (r.expires_in || 3600) * 1000; ok(ytToken); },
+      error_callback: e => bad(new Error(e && e.type === 'popup_closed' ? '登入視窗被關掉了' : '登入沒有完成'))
+    });
+    tc.requestAccessToken();
+  });
+}
+async function ytApi(path, body, token) {
+  const r = await fetch('https://www.googleapis.com/youtube/v3/' + path, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const reason = j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason;
+    const e = new Error(reason === 'quotaExceeded' ? '今天的 YouTube 額度用完了，明天（台灣時間下午 3 點後）再試' : reason === 'videoNotFound' ? '找不到影片' : (j.error && j.error.message) || ('HTTP ' + r.status));
+    e.reason = reason; throw e;
+  }
+  return j;
+}
+function ytChecked() { return lib.filter(t => t.checked && t.source === 'yt'); }
+function updateSaveHint() {
+  const yt = ytChecked().length, other = lib.filter(t => t.checked && t.source !== 'yt').length;
+  $('#save-yt-hint').textContent = yt ? `會存 ${yt} 首 YouTube 歌曲` + (other ? `（另外 ${other} 首不是 YouTube 歌，會略過）` : '') : '勾選的歌裡還沒有 YouTube 歌曲，先在下面「加入歌曲」貼 YouTube 網址';
+  $('#btn-save-yt').disabled = !yt;
+}
+function saveStatus(msg) { const el = $('#save-yt-status'); el.hidden = false; el.innerHTML = msg; }
+async function saveToYouTube() {
+  const clientId = $('#gclient').value.trim();
+  if (!clientId) { saveStatus('還沒填 Google 用戶端 ID。請先展開下面的「YouTube 帳號設定」照步驟做一次。'); $('#gclient').closest('details').open = true; return; }
+  const songs = ytChecked();
+  if (!songs.length) return;
+  if (songs.length > 190) { saveStatus(`這次有 ${songs.length} 首，超過每天大約 190 首的額度。請先少勾一些，分天存。`); return; }
+  const name = $('#pl-name').value.trim() || `想怎麼聽 ${new Date().toLocaleDateString('zh-TW')}`;
+  const btn = $('#btn-save-go'); btn.disabled = true;
+  try {
+    saveStatus('正在連到 Google…');
+    try { await loadGis(); } catch { throw new Error('這個頁面載不到 Google 登入（在 Claude 的預覽頁會被擋）。請用你電腦上的版本或架到網站上的版本開啟。'); }
+    saveStatus('請在跳出的視窗登入 Google 並允許管理 YouTube 帳號…');
+    const token = await getToken(clientId);
+    saveStatus('建立播放清單中…');
+    const pl = await ytApi('playlists?part=snippet,status', { snippet: { title: name, description: '由「想怎麼聽就怎麼聽」建立' }, status: { privacyStatus: $('#pl-privacy').value } }, token);
+    const fails = [];
+    for (let i = 0; i < songs.length; i++) {
+      saveStatus(`加入歌曲 ${i + 1} / ${songs.length}：${songs[i].title.replace(/</g, '&lt;')}`);
+      try { await ytApi('playlistItems?part=snippet', { snippet: { playlistId: pl.id, position: i, resourceId: { kind: 'youtube#video', videoId: songs[i].ref } } }, token); }
+      catch (e) { if (e.reason === 'quotaExceeded') { fails.push(...songs.slice(i).map(s => s.title)); break; } fails.push(songs[i].title); }
+    }
+    const url = 'https://music.youtube.com/playlist?list=' + encodeURIComponent(pl.id);
+    saveStatus(`完成！「${name.replace(/</g, '&lt;')}」已經在你的 YouTube 帳號裡，${songs.length - fails.length} 首。` + (fails.length ? `<br>沒加進去：${fails.map(f => f.replace(/</g, '&lt;')).join('、')}` : '') + `<br><a href="${url}" target="_blank" rel="noopener">在 YouTube Music 打開這個清單</a>，手機的 YouTube Music App 也會在「媒體庫」看到它。`);
+    toast('播放清單已建立');
+  } catch (e) {
+    saveStatus('沒有存成功：' + String(e.message || e).replace(/</g, '&lt;'));
+  } finally { btn.disabled = false; }
+}
+function initSaveYt() {
+  try { $('#gclient').value = localStorage.getItem('mlab.gclient') || ''; } catch {}
+  $('#gclient').addEventListener('change', e => { try { localStorage.setItem('mlab.gclient', e.target.value.trim()); } catch {} });
+  $('#origin-hint').textContent = /^https?:/.test(location.origin) ? location.origin : '例如 http://localhost:8000';
+  $('#btn-save-yt').onclick = () => { $('#save-yt-panel').hidden = false; $('#pl-name').focus(); };
+  $('#btn-save-cancel').onclick = () => { $('#save-yt-panel').hidden = true; };
+  $('#btn-save-go').onclick = saveToYouTube;
+  updateSaveHint();
+}
+
+/* ============ 鎖屏 / 控制中心（Media Session）============ */
+let msBound = false;
+function updateMediaSession(playing) {
+  if (!('mediaSession' in navigator)) return;
+  const t = state.current;
+  try {
+    if (t && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: '想怎麼聽就怎麼聽' });
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+  } catch {}
+  if (msBound) return; msBound = true;
+  const on = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch {} };
+  on('play', () => { if (state.current) { backendFor(state.current).play(); syncPlayButton(); } else next(false); });
+  on('pause', () => { if (state.current) { backendFor(state.current).pause(); syncPlayButton(); } });
+  on('nexttrack', () => next(true));
+  on('previoustrack', () => prev());
+  on('seekto', d => { if (state.current && d.seekTime != null) backendFor(state.current).seek(d.seekTime); });
+}
+document.addEventListener('visibilitychange', () => {
+  const t = state.current; if (!t || document.hidden) return;
+  const be = backendFor(t); if (be.want && !be.isPlaying()) be.play();  // 回到頁面時接著播
+});
+
+/* ============ 啟動 ============ */
+renderDate(); buildTicks(); renderMascot(); renderSettings(); renderNow(); renderLibrary(); reshuffle(); initSaveYt();
+window.__ytBackend = new YouTubeBackend();
+// 用 setInterval 而不是 requestAnimationFrame：頁面在背景或鎖屏時 rAF 會完全停止，A–B 循環和換歌就會失效。
+setInterval(tick, 200);
+</script>
