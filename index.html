@@ -190,6 +190,8 @@ details > summary::after { content: " ＋"; color: var(--blue) }
 details[open] > summary::after { content: " －" }
 details.card > summary { color: var(--ink); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
 .save-yt { display: grid; gap: 6px; justify-items: start }
+.yt-add { display: grid; gap: 8px; margin: 4px 0 6px }
+.yt-add textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(0,0,0,.08); background: var(--bg, #e9ecf1); color: inherit }
 .save-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--night); color: #fff; padding: 11px 20px; font-weight: 500; box-shadow: 6px 8px 16px var(--sh) }
 .save-btn svg { width: 18px; height: 18px; color: var(--blue); filter: drop-shadow(0 0 4px var(--blue)) }
 .save-btn:hover { color: var(--blue-hi) }
@@ -300,6 +302,12 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <span class="tiny">只播放有打開開關的歌。按住 ⠿ 拖曳調整順序。</span>
           <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button></span>
         </div>
+        <div class="yt-add">
+          <label class="lbl" for="yt-url">從 YouTube 加入</label>
+          <textarea id="yt-url" rows="2" placeholder="貼上 YouTube / YouTube Music 的歌曲網址或播放清單網址，可以一次貼很多行"></textarea>
+          <div class="row" style="gap:8px"><button id="btn-add-yt" class="mini">加入</button><span class="tiny" id="yt-add-msg"></span></div>
+          <div class="tiny" id="yt-status">YouTube 播放器載入中…</div>
+        </div>
         <ul id="library"></ul>
         <div class="save-yt">
           <button id="btn-save-yt" class="save-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14 0v-4h-2v4h-4v2h4v4h2v-4h4v-2z"/></svg>儲存為 YouTube 播放清單</button>
@@ -335,15 +343,8 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           </div>
         </details>
         <details>
-          <summary>加入歌曲</summary>
+          <summary>加入本機音檔</summary>
           <div style="display:grid;gap:12px;margin-top:12px">
-            <input type="text" id="yt-url" placeholder="YouTube 網址或影片 ID">
-            <div class="row">
-              <input type="text" id="yt-title" placeholder="歌名" style="flex:1 1 120px">
-              <input type="text" id="yt-artist" placeholder="歌手" style="flex:1 1 100px">
-              <button id="btn-add-yt">加入 YouTube 歌曲</button>
-            </div>
-            <div class="notice" id="yt-status">YouTube 播放器載入中…</div>
             <div class="row">
               <label for="file-in" class="tiny">或加入本機音檔：</label>
               <input type="file" id="file-in" accept="audio/*" multiple style="max-width:100%">
@@ -473,6 +474,7 @@ class YouTubeBackend {
           onReady: () => { this.ready = true; done(true); },
           onStateChange: e => {
             this.state = e.data;
+            if (e.data === 1) fillTitleFromPlayer(this.player);
             if (e.data === 0) this.onEnded();
             // 鎖屏或切到背景時 iOS 常會自動暫停，若不是使用者按的暫停就試著接著播
             if (e.data === 2 && this.want && document.hidden) setTimeout(() => { if (this.want) this.player.playVideo(); }, 400);
@@ -513,16 +515,16 @@ const DEFAULT_LIB = [
 ];
 const savedMeta = store.get('meta', {});
 const savedYt = store.get('yt', []);
-const lib = [...DEFAULT_LIB, ...savedYt].map(t => ({ checked: true, liked: false, skips: 0, plays: 0, ab: null, ...t, ...(savedMeta[t.id] || {}) }));
+const lib = [...(savedYt.length ? [] : DEFAULT_LIB), ...savedYt].map(t => ({ checked: true, liked: false, skips: 0, plays: 0, ab: null, ...t, ...(savedMeta[t.id] || {}) }));
 { const order = store.get('order', null); if (order) { const pos = id => { const i = order.indexOf(id); return i < 0 ? 1e9 : i; }; lib.sort((a, b) => pos(a.id) - pos(b.id)); } }
-if (!store.get('seeded', false)) { const l = lib.find(t => t.id === 'd3'); l.liked = true; lib.find(t => t.id === 'd4').skips = 2; }
+if (!store.get('seeded', false) && !savedYt.length) { const l = lib.find(t => t.id === 'd3'); l.liked = true; lib.find(t => t.id === 'd4').skips = 2; }
 
 const settings = Object.assign({ mode: 'order', noSameArtist: true, avoidRecent: true, recentN: 3, skipPenalty: true, abTimes: 3, mascot: 'astronaut' }, store.get('settings2', {}));
 
 function persist() {
   const meta = {}; lib.forEach(t => meta[t.id] = { checked: t.checked, liked: t.liked, skips: t.skips, plays: t.plays, ab: t.ab });
   store.set('meta', meta); store.set('settings2', settings); store.set('seeded', true); store.set('order', lib.map(t => t.id));
-  store.set('yt', lib.filter(t => t.source === 'yt').map(({ id, title, artist, source, ref }) => ({ id, title, artist, source, ref })));
+  store.set('yt', lib.filter(t => t.source === 'yt').map(({ id, title, artist, source, ref, pending }) => ({ id, title, artist, source, ref, pending })));
 }
 
 const MODE_DESC = {
@@ -914,8 +916,8 @@ function renderSettings() {
 function updateYtStatus() {
   const yt = window.__ytBackend;
   const el = $('#yt-status');
-  if (yt && yt.available) { BACKENDS.yt = yt; el.textContent = 'YouTube 播放器可以使用。加入的歌會用官方嵌入播放器播放，播放器畫面會顯示在「正在播放」裡。'; $('#btn-add-yt').disabled = false; }
-  else { el.textContent = '目前這個頁面載不到 YouTube 播放器（例如在 Claude 的預覽視窗裡會被擋）。把這個檔案放到網站上（例如 GitHub Pages）或用本機伺服器開啟就能用。示範音軌和本機音檔不受影響。'; }
+  if (yt && yt.available) { BACKENDS.yt = yt; el.textContent = '✓ 已連上 YouTube 播放器。歌名會自動抓。播放清單要是「公開」或「不公開（知道連結的人）」才讀得到。'; $('#btn-add-yt').disabled = false; }
+  else { el.textContent = '✗ 這個頁面載不到 YouTube 播放器（在 Claude 的預覽視窗裡會被擋，請用 GitHub Pages 的網址開）。'; }
   renderLibrary(); reshuffle();
 }
 
@@ -965,16 +967,73 @@ dial.addEventListener('keydown', e => {
 });
 dial.setAttribute('tabindex', '0');
 
-$('#btn-add-yt').onclick = () => {
-  const raw = $('#yt-url').value.trim();
-  const m = raw.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|music\.youtube\.com\/watch\?v=)([\w-]{11})/) || raw.match(/^([\w-]{11})$/);
-  if (!m) return toast('看不出影片 ID，請貼完整的 YouTube 網址');
-  const t = { id: 'yt-' + m[1], title: $('#yt-title').value.trim() || 'YouTube 影片', artist: $('#yt-artist').value.trim() || '未知歌手', source: 'yt', ref: m[1], checked: true, liked: false, skips: 0, plays: 0, ab: null };
-  if (lib.some(x => x.id === t.id)) return toast('這首已經在曲庫裡了');
-  lib.push(t); persist(); renderLibrary(); reshuffle();
-  $('#yt-url').value = $('#yt-title').value = $('#yt-artist').value = '';
-  toast(BACKENDS.yt ? `已加入「${t.title}」` : `已加入「${t.title}」，在能載入 YouTube 的地方開啟才能播`);
-};
+function ytMetaClean(m) { return { title: m.title, artist: (m.author_name || '').replace(/ - Topic$/, '') || 'YouTube' }; }
+async function ytMeta(id) {
+  const v = encodeURIComponent('https://www.youtube.com/watch?v=' + id);
+  for (const u of ['https://www.youtube.com/oembed?format=json&url=' + v, 'https://noembed.com/embed?url=' + v]) {
+    try { const r = await fetch(u); if (!r.ok) continue; const j = await r.json(); if (j && j.title) return ytMetaClean(j); } catch {}
+  }
+  return null;
+}
+function fillTitleFromPlayer(player) {
+  const t = state.current; if (!t || t.source !== 'yt' || !t.pending) return;
+  const d = player.getVideoData && player.getVideoData(); if (!d || !d.title) return;
+  t.title = d.title; t.artist = (d.author || '').replace(/ - Topic$/, '') || t.artist; delete t.pending;
+  persist(); renderNow(); renderLibrary(); renderQueue();
+}
+function ytPlaylistIds(list) {
+  return new Promise((ok, bad) => {
+    if (!window.YT || !YT.Player) return bad(new Error('YouTube 播放器還沒載入'));
+    const wrap = document.createElement('div'), host = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:320px;height:180px'; wrap.appendChild(host); document.body.appendChild(wrap);
+    let done = false, p;
+    const msg = '讀不到這個播放清單。要把它設成「公開」或「不公開」（知道連結的人可看），「私人」和「喜歡的音樂」讀不到。';
+    const finish = (f, v) => { if (done) return; done = true; clearTimeout(timer); try { p.destroy(); } catch {} wrap.remove(); f(v); };
+    const timer = setTimeout(() => finish(bad, new Error(msg)), 15000);
+    p = new YT.Player(host, { width: 320, height: 180, playerVars: { listType: 'playlist', list },
+      events: {
+        onReady: () => { const poll = () => { if (done) return; const ids = p.getPlaylist && p.getPlaylist(); if (ids && ids.length) finish(ok, ids); else setTimeout(poll, 400); }; poll(); },
+        onError: () => finish(bad, new Error(msg))
+      } });
+  });
+}
+async function addFromYouTube() {
+  const raw = $('#yt-url').value.trim(); if (!raw) return;
+  const msgEl = $('#yt-add-msg'), btn = $('#btn-add-yt');
+  const lists = [], vids = [];
+  for (const part of raw.split(/\s+/)) {
+    const m = part.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/) || part.match(/^([\w-]{11})$/);
+    const l = part.match(/[?&]list=([\w-]+)/);
+    if (m) vids.push(m[1]); else if (l) lists.push(l[1]);  // 單曲網址帶 list= 時只加那首歌
+  }
+  if (!lists.length && !vids.length) { msgEl.textContent = '看不出網址，請貼 YouTube 或 YouTube Music 的分享連結'; return; }
+  btn.disabled = true;
+  try {
+    for (const l of lists) {
+      msgEl.textContent = '讀取播放清單…';
+      try { vids.push(...await ytPlaylistIds(l)); } catch (e) { msgEl.textContent = e.message; if (!vids.length && l === lists[lists.length - 1]) return; }
+    }
+    const fresh = [...new Set(vids)].filter(id => !lib.some(t => t.id === 'yt-' + id));
+    if (!fresh.length) { msgEl.textContent = '這些歌已經都在歌單裡了'; return; }
+    if (lib.some(t => t.source === 'demo')) {
+      if (state.current && state.current.source === 'demo') { backendFor(state.current).pause(); state.current = null; }
+      for (let i = lib.length - 1; i >= 0; i--) if (lib[i].source === 'demo') lib.splice(i, 1);
+    }
+    const added = fresh.map(id => ({ id: 'yt-' + id, title: '讀取歌名中…', artist: 'YouTube', source: 'yt', ref: id, pending: true, checked: true, liked: false, skips: 0, plays: 0, ab: null }));
+    lib.push(...added); persist(); renderLibrary(); reshuffle(); renderNow();
+    $('#yt-url').value = '';
+    for (let i = 0; i < added.length; i++) {
+      msgEl.textContent = `抓歌名 ${i + 1} / ${added.length}…`;
+      const m = await ytMeta(added[i].ref);
+      if (m) { added[i].title = m.title; added[i].artist = m.artist; delete added[i].pending; }
+      else added[i].title = 'YouTube 歌曲（播放時會補上歌名）';
+      if (i % 5 === 4 || i === added.length - 1) { persist(); renderLibrary(); renderQueue(); }
+    }
+    msgEl.textContent = `已加入 ${added.length} 首`;
+    toast(`已加入 ${added.length} 首 YouTube 歌曲`);
+  } finally { btn.disabled = false; }
+}
+$('#btn-add-yt').onclick = addFromYouTube;
 $('#file-in').onchange = async e => {
   for (const f of e.target.files) {
     const id = 'local-' + Math.random().toString(36).slice(2, 9);
