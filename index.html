@@ -183,6 +183,8 @@ ol, ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
 .item.current .ab-btn { background: #23263a; color: var(--blue-hi); box-shadow: none }
 .ab-sheet { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(440px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto; z-index: 56; box-shadow: 0 18px 50px rgba(30, 34, 50, .35), -6px -6px 14px var(--hi) }
 .ab-sheet[hidden], .ab-backdrop[hidden] { display: none }
+.ab-sheet { overflow-x: hidden; grid-template-columns: minmax(0, 1fr) }
+.ab-sheet > * { min-width: 0 }
 .ab-backdrop { position: fixed; inset: 0; z-index: 55; background: rgba(40, 44, 60, .18) }
 .grip { cursor: grab; color: #a3a5ad; padding: 4px 2px; font-size: 16px; line-height: 1; touch-action: none; user-select: none }
 .lib-item.dragging { background: #eceef1; box-shadow: var(--raise); z-index: 2; cursor: grabbing }
@@ -383,8 +385,8 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
 </div>
       <div class="ab-backdrop" id="ab-backdrop" hidden></div>
 <section class="card ab-sheet" id="ab-sheet" role="dialog" aria-label="段落循環" hidden>
-        <div class="row between">
-          <h2 style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A–B 循環 · <span id="ab-song"></span></h2>
+        <div class="row between" style="flex-wrap:nowrap">
+          <h2 style="flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A–B 循環 · <span id="ab-song"></span></h2>
           <button class="mini" id="btn-ab-close" aria-label="關閉">✕</button>
         </div>
         <span class="tiny num" id="ab-label">未設定</span>
