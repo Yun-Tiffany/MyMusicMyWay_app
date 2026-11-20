@@ -595,7 +595,7 @@ function pickNext(prev, recent) {
 }
 
 /* ============ 播放控制 ============ */
-const state = { current: null, queue: [], history: [], abLeft: 0, loading: false };
+const state = { current: null, queue: [], history: [], abLeft: 0, abDone: 0, loading: false };
 const QUEUE_LEN = 6;
 
 function fillQueue() {
@@ -616,7 +616,7 @@ async function playTrack(t, autoplay = true) {
   const old = state.current && backendFor(state.current);
   if (old) old.pause();
   if (state.current) { state.history.push(state.current); if (state.history.length > 50) state.history.shift(); }
-  state.current = t; state.abLeft = settings.abTimes;
+  state.current = t; state.abLeft = settings.abTimes; state.abDone = 0;
   if (settings.mode === 'order') { state.queue = []; fillQueue(); }
   const be = backendFor(t);
   try {
@@ -648,9 +648,9 @@ function next(manual = true) {
 
 function prev() {
   const be = state.current && backendFor(state.current);
-  if (be && be.time() > 3) { be.seek(0); return; }
+  if (be && be.time() > 3) { be.seek(0); state.abDone = 0; state.abLeft = settings.abTimes; renderLibrary(); return; }
   const p = state.history.pop();
-  if (!p) { be && be.seek(0); return; }
+  if (!p) { be && be.seek(0); state.abDone = 0; state.abLeft = settings.abTimes; renderLibrary(); return; }
   if (state.current) state.queue.unshift({ track: state.current, why: '剛才那首' });
   state.queue.length = Math.min(state.queue.length, QUEUE_LEN);
   const cur = state.current; state.current = null;
@@ -672,7 +672,8 @@ function tick() {
     if (t.ab && t.ab.on && be.isPlaying() && cur >= t.ab.b) {
       if (state.abLeft === -1 || state.abLeft > 0) {
         if (state.abLeft > 0) state.abLeft--;
-        be.seek(t.ab.a);
+        be.seek(t.ab.a); state.abDone++;
+        const w = document.querySelector(`#library li[data-id="${t.id}"] .why`); if (w) w.textContent = '循環 ' + state.abDone + ' 次';
       }
     }
     const pct = d ? Math.min(100, cur / d * 100) : 0;
@@ -896,8 +897,7 @@ function renderLibrary() {
       <span class="why num"></span><button class="ab-btn${t.ab && t.ab.b != null ? ' set' : ''}" aria-label="調整「${t.title.replace(/"/g, '')}」的 A–B 循環">AB</button>`;
     li.querySelector('.t .t').textContent = t.title;
     li.querySelector('.a').textContent = t.artist + ' · ' + SRC_LABEL[t.source] + (unavailable ? '（這裡無法播放）' : '');
-    const bits = []; if (t.skips) bits.push('跳過 ' + t.skips); if (t.plays) bits.push('播完 ' + t.plays);
-    li.querySelector('.why').textContent = bits.join(' · ');
+    li.querySelector('.why').textContent = t.ab && t.ab.on && t.ab.b != null ? '循環 ' + (t === state.current ? state.abDone : 0) + ' 次' : '';
     li.querySelector('.grip').addEventListener('pointerdown', e => startDrag(e, li));
     li.querySelector('.pick').onchange = e => { t.checked = e.target.checked; persist(); renderLibrary(); reshuffle(); };
     li.querySelector('.ab-btn').onclick = () => { if (unavailable) return; if (t !== state.current) playTrack(t); openAB(); };
@@ -959,22 +959,22 @@ $('#btn-next').onclick = () => next(true);
 $('#btn-prev').onclick = prev;
 $('#btn-reshuffle').onclick = () => { reshuffle(); toast('已重新排好接下來的歌'); };
 $('#btn-like').onclick = () => { const t = state.current; if (!t) return; t.liked = !t.liked; persist(); renderNow(); renderLibrary(); reshuffle(); toast(t.liked ? '已按愛心，出現機率 ×3' : '已取消愛心'); };
-$('#btn-a').onclick = () => { const t = state.current; if (!t) return toast('先播一首歌'); const now = backendFor(t).time(); t.ab = { a: now, b: null, on: true }; state.abLeft = settings.abTimes; persist(); renderNow(); };
+$('#btn-a').onclick = () => { const t = state.current; if (!t) return toast('先播一首歌'); const now = backendFor(t).time(); t.ab = { a: now, b: null, on: true }; state.abLeft = settings.abTimes; state.abDone = 0; persist(); renderNow(); };
 $('#btn-b').onclick = () => {
   const t = state.current; if (!t) return toast('先播一首歌');
   if (!t.ab) return toast('先設 A 點');
   const now = backendFor(t).time(); if (now <= t.ab.a + 0.5) return toast('B 點要在 A 點之後');
-  t.ab.b = now; t.ab.on = true; state.abLeft = settings.abTimes; backendFor(t).seek(t.ab.a); persist(); renderNow(); renderLibrary();
+  t.ab.b = now; t.ab.on = true; state.abLeft = settings.abTimes; state.abDone = 0; backendFor(t).seek(t.ab.a); persist(); renderNow(); renderLibrary();
   toast('開始循環這一段');
 };
 $('#btn-ab-clear').onclick = () => { const t = state.current; if (!t) return; t.ab = null; persist(); renderNow(); renderLibrary(); };
 $('#btn-loopq').onclick = () => { if (!state.current) return toast('先播一首歌'); openAB(); };
-$('#btn-ab-toggle').onclick = () => { const t = state.current; if (!t || !t.ab || t.ab.b == null) return toast('先設好 A、B 兩點'); t.ab.on = !t.ab.on; state.abLeft = settings.abTimes; persist(); renderNow(); };
+$('#btn-ab-toggle').onclick = () => { const t = state.current; if (!t || !t.ab || t.ab.b == null) return toast('先設好 A、B 兩點'); t.ab.on = !t.ab.on; state.abLeft = settings.abTimes; state.abDone = 0; persist(); renderNow(); };
 function openAB() { $('#ab-sheet').hidden = false; $('#ab-backdrop').hidden = false; renderNow(); $('#btn-ab-close').focus(); }
 function closeAB() { $('#ab-sheet').hidden = true; $('#ab-backdrop').hidden = true; }
 $('#btn-ab-close').onclick = closeAB; $('#ab-backdrop').onclick = closeAB;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAB(); });
-$('#ab-times').onchange = e => { settings.abTimes = +e.target.value; state.abLeft = settings.abTimes; persist(); };
+$('#ab-times').onchange = e => { settings.abTimes = +e.target.value; state.abLeft = settings.abTimes; state.abDone = 0; persist(); };
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { settings.mode = b.dataset.mode; persist(); renderSettings(); reshuffle(); });
 $('#r-artist').onchange = e => { settings.noSameArtist = e.target.checked; persist(); reshuffle(); };
 $('#r-recent').onchange = e => { settings.avoidRecent = e.target.checked; persist(); reshuffle(); };
