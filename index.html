@@ -178,6 +178,10 @@ input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 38px; 
 input[type=checkbox]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #f5f6f8; box-shadow: 1px 2px 4px var(--sh); transition: transform .15s }
 input[type=checkbox]:checked { background: var(--night); box-shadow: none }
 input[type=checkbox]:checked::after { transform: translateX(16px); background: var(--blue); box-shadow: 0 0 8px var(--blue) }
+input.pick { width: 26px; height: 26px; border-radius: 8px }
+input.pick::after { content: ""; top: 50%; left: 50%; width: 7px; height: 13px; border-radius: 0; background: none; box-shadow: none; border: solid transparent; border-width: 0 3px 3px 0; transform: translate(-50%, -62%) rotate(45deg) }
+input.pick:checked { background: var(--blue); box-shadow: 0 0 10px var(--blue-glow) }
+input.pick:checked::after { transform: translate(-50%, -62%) rotate(45deg); background: none; box-shadow: none; border-color: #fff }
 .rule { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: start }
 .rule input[type=checkbox] { margin-top: 1px }
 .rule .d { grid-column: 2; font-size: 12px; color: var(--muted) }
@@ -303,7 +307,7 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <span class="lbl num" id="lib-count"></span>
         </div>
         <div class="row between">
-          <span class="tiny">只播放有打開開關的歌。按住 ⠿ 拖曳調整順序。</span>
+          <span class="tiny">只播放有打勾的歌，點方框可以勾選或取消。按住 ⠿ 拖曳調整順序。</span>
           <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button></span>
         </div>
         <div class="yt-add">
