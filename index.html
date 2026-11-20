@@ -178,10 +178,6 @@ input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 38px; 
 input[type=checkbox]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #f5f6f8; box-shadow: 1px 2px 4px var(--sh); transition: transform .15s }
 input[type=checkbox]:checked { background: var(--night); box-shadow: none }
 input[type=checkbox]:checked::after { transform: translateX(16px); background: var(--blue); box-shadow: 0 0 8px var(--blue) }
-input.pick { width: 26px; height: 26px; border-radius: 8px }
-input.pick::after { content: ""; top: 50%; left: 50%; width: 7px; height: 13px; border-radius: 0; background: none; box-shadow: none; border: solid transparent; border-width: 0 3px 3px 0; transform: translate(-50%, -62%) rotate(45deg) }
-input.pick:checked { background: var(--blue); box-shadow: 0 0 10px var(--blue-glow) }
-input.pick:checked::after { transform: translate(-50%, -62%) rotate(45deg); background: none; box-shadow: none; border-color: #fff }
 .rule { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: start }
 .rule input[type=checkbox] { margin-top: 1px }
 .rule .d { grid-column: 2; font-size: 12px; color: var(--muted) }
@@ -307,8 +303,8 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <span class="lbl num" id="lib-count"></span>
         </div>
         <div class="row between">
-          <span class="tiny">只播放有打勾的歌，點方框可以勾選或取消。按住 ⠿ 拖曳調整順序。</span>
-          <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button></span>
+          <span class="tiny">只播放有打開開關的歌，關掉的歌會先藏起來。按住 ⠿ 拖曳調整順序。</span>
+          <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button><button class="mini" id="btn-show-off" hidden></button></span>
         </div>
         <ul id="library"></ul>
         <button id="btn-add-toggle" class="mini" aria-expanded="false" aria-controls="yt-add" style="justify-self:start">＋ 加入歌曲</button>
@@ -873,7 +869,10 @@ function renderQueue() {
 }
 function renderLibrary() {
   const ul = $('#library'); ul.innerHTML = '';
+  const offN = lib.filter(t => !t.checked).length;
+  const sb = $('#btn-show-off'); sb.hidden = !offN; sb.textContent = state.showOff ? '隱藏沒開的歌' : `顯示沒開的歌（${offN}）`;
   lib.forEach(t => {
+    if (!t.checked && !state.showOff) return;
     const li = document.createElement('li'); li.dataset.id = t.id; li.className = 'item lib-item' + (t === state.current ? ' current' : '') + (t.checked ? '' : ' off');
     const unavailable = t.source === 'yt' && !BACKENDS.yt;
     li.innerHTML = `<span class="grip" title="拖曳調整順序" aria-label="拖曳調整順序">⠿</span><input type="checkbox" class="pick" id="pick-${t.id}" ${t.checked ? 'checked' : ''} aria-label="勾選要播放"><button class="heart${t.liked ? ' liked' : ''}" aria-label="愛心">${t.liked ? '♥' : '♡'}</button>
@@ -909,8 +908,10 @@ function startDrag(e, li) {
     window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
     li.classList.remove('dragging'); document.body.classList.remove('is-dragging');
     const ids = [...ul.children].map(x => x.dataset.id);
-    const changed = ids.some((id, i) => lib[i].id !== id);
-    lib.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    const vis = new Set(ids), slots = [], byId = {};
+    lib.forEach((t, i) => { byId[t.id] = t; if (vis.has(t.id)) slots.push(i); });
+    const nl = lib.slice(); ids.forEach((id, k) => nl[slots[k]] = byId[id]);
+    const changed = nl.some((t, i) => t !== lib[i]); lib.splice(0, lib.length, ...nl);
     persist(); renderLibrary();
     if (changed) { reshuffle(); toast('已更新順序'); }
   };
@@ -935,6 +936,7 @@ function updateYtStatus() {
 /* ============ 事件 ============ */
 $('#btn-play').onclick = togglePlay;
 $('#btn-queue-toggle').onclick = () => { const w = $('#queue-wrap'); w.hidden = !w.hidden; $('#btn-queue-toggle').setAttribute('aria-expanded', String(!w.hidden)); renderQueue(); };
+$('#btn-show-off').onclick = () => { state.showOff = !state.showOff; renderLibrary(); };
 $('#btn-all').onclick = () => { lib.forEach(t => t.checked = true); persist(); renderLibrary(); reshuffle(); };
 $('#btn-none').onclick = () => { lib.forEach(t => t.checked = false); persist(); renderLibrary(); reshuffle(); };
 $('#btn-next').onclick = () => next(true);
