@@ -205,7 +205,7 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
 .save-btn:hover { color: var(--blue-hi) }
 .save-btn:disabled { background: #9a9ca5; box-shadow: none }
 .save-panel { display: grid; gap: 10px; padding: 14px; border-radius: 22px; box-shadow: var(--press) }
-.save-panel[hidden] { display: none }
+.save-panel[hidden], .yt-add[hidden], .my-lists[hidden] { display: none }
 .notice a, .steps a { color: var(--blue) }
 .steps { list-style: decimal; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; color: var(--ink) }
 .steps code { font-size: 12px; background: #fff; padding: 1px 6px; border-radius: 6px; word-break: break-all }
@@ -310,7 +310,9 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <span class="tiny">只播放有打勾的歌，點方框可以勾選或取消。按住 ⠿ 拖曳調整順序。</span>
           <span class="row" style="gap:8px"><button class="mini" id="btn-all">全選</button><button class="mini" id="btn-none">全不選</button></span>
         </div>
-        <div class="yt-add">
+        <ul id="library"></ul>
+        <button id="btn-add-toggle" class="mini" aria-expanded="false" aria-controls="yt-add" style="justify-self:start">＋ 加入歌曲</button>
+        <div class="yt-add" id="yt-add" hidden>
           <label class="lbl" for="yt-url">從 YouTube 加入</label>
           <textarea id="yt-url" rows="2" placeholder="貼上 YouTube / YouTube Music 的歌曲網址或播放清單網址，可以一次貼很多行"></textarea>
           <div class="row" style="gap:8px"><button id="btn-add-yt" class="mini">加入</button><span class="tiny" id="yt-add-msg"></span></div>
@@ -318,7 +320,6 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <button id="btn-my-lists" class="save-btn" style="justify-self:start">登入 YouTube，從我的清單匯入</button>
           <div id="my-lists" class="my-lists" hidden></div>
         </div>
-        <ul id="library"></ul>
         <div class="save-yt">
           <button id="btn-save-yt" class="save-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h12v2H4zm0 4h12v2H4zm0 4h8v2H4zm14 0v-4h-2v4h-4v2h4v4h2v-4h4v-2z"/></svg>儲存為 YouTube 播放清單</button>
           <span class="tiny" id="save-yt-hint"></span>
@@ -1128,17 +1129,17 @@ async function showMyLists() {
   try {
     const token = await ytLogin(msgEl); if (!token) return;
     msgEl.textContent = '讀取你的播放清單…';
-    const pls = await ytGetAll('playlists?part=snippet,contentDetails,status&mine=true&maxResults=50', token, 500);
+    const pls = (await ytGetAll('playlists?part=snippet,contentDetails,status&mine=true&maxResults=50', token, 500)).filter(pl => pl.contentDetails.itemCount > 0);
     box.innerHTML = '<div class="tiny">按一個清單就會把裡面的歌加進歌單：</div>';
     const mk = (title, sub, img, fn) => { const b = document.createElement('button'); b.className = 'pl'; b.innerHTML = (img ? `<img src="${esc(img)}" alt="">` : '') + `<span>${esc(title)}<small>${esc(sub)}</small></span>`; b.onclick = fn; box.appendChild(b); };
-    mk('我喜歡的歌', '在 YouTube / YouTube Music 按過讚的', '', () => importFrom('videos?part=snippet&myRating=like&maxResults=50', token, true));
+    mk('我喜歡的歌', '在 YouTube / YouTube Music 按過讚的', '', () => importFrom('videos?part=snippet&myRating=like&maxResults=50', token, true, '我喜歡的歌'));
     pls.forEach(pl => mk(pl.snippet.title, `${pl.contentDetails.itemCount} 首` + (pl.status && pl.status.privacyStatus === 'private' ? '・私人' : ''), pl.snippet.thumbnails && pl.snippet.thumbnails.default && pl.snippet.thumbnails.default.url,
-      () => importFrom('playlistItems?part=snippet&maxResults=50&playlistId=' + encodeURIComponent(pl.id), token, false)));
+      () => importFrom('playlistItems?part=snippet&maxResults=50&playlistId=' + encodeURIComponent(pl.id), token, false, pl.snippet.title)));
     box.hidden = false;
     msgEl.textContent = `找到 ${pls.length} 個播放清單`;
   } catch (e) { msgEl.textContent = '沒有成功：' + (e.message || e); }
 }
-async function importFrom(path, token, isVideos) {
+async function importFrom(path, token, isVideos, name) {
   const msgEl = $('#yt-add-msg');
   try {
     msgEl.textContent = '讀取歌曲中…';
@@ -1147,8 +1148,8 @@ async function importFrom(path, token, isVideos) {
       ? { ref: it.id, title: it.snippet.title, artist: it.snippet.channelTitle }
       : { ref: it.snippet.resourceId && it.snippet.resourceId.videoId, title: it.snippet.title, artist: it.snippet.videoOwnerChannelTitle })
       .filter(x => x.ref && !/^(Private|Deleted) video$/.test(x.title));
-    await addTracks(songs, msgEl);
-  } catch (e) { msgEl.textContent = '沒有成功：' + (e.message || e); }
+    msgEl.textContent = `「${name}」`; await addTracks(songs, msgEl);
+  } catch (e) { msgEl.textContent = `「${name}」沒有匯入成功：` + String(e.message || e).replace(/<\/?code>/g, ''); }
 }
 function ytChecked() { return lib.filter(t => t.checked && t.source === 'yt'); }
 function updateSaveHint() {
@@ -1195,6 +1196,7 @@ function initSaveYt() {
   $('#btn-save-cancel').onclick = () => { $('#save-yt-panel').hidden = true; };
   $('#btn-save-go').onclick = saveToYouTube;
   $('#btn-my-lists').onclick = showMyLists;
+  $('#btn-add-toggle').onclick = () => { const b = $('#yt-add'); b.hidden = !b.hidden; $('#btn-add-toggle').setAttribute('aria-expanded', String(!b.hidden)); $('#btn-add-toggle').textContent = b.hidden ? '＋ 加入歌曲' : '－ 收起'; };
   updateSaveHint();
 }
 
