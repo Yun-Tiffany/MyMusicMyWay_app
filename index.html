@@ -334,7 +334,7 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
           <div class="notice" id="save-yt-status" hidden></div>
         </div>
         <details>
-          <summary>YouTube 帳號設定（第一次用要做一次）</summary>
+          <summary>YouTube 帳號設定（已設定好）</summary>
           <div style="display:grid;gap:10px;margin-top:12px">
             <label class="tiny" for="gclient">Google OAuth 用戶端 ID</label>
             <input type="text" id="gclient" placeholder="xxxxxxxx.apps.googleusercontent.com">
@@ -1063,6 +1063,7 @@ document.addEventListener('keydown', e => {
 /* ============ 存成 YouTube 播放清單（YouTube Data API v3）============
    用 Google Identity Services 取得使用者授權，再用 playlists.insert + playlistItems.insert 建清單。
    每次 insert 約 50 單位額度，預設每日 10,000 單位，大約 190 首。 */
+const DEFAULT_GCLIENT = '640391081928-7psmi81bdo4cl9p5ivb4e3s2n3ct76mc.apps.googleusercontent.com';
 const YT_SCOPE = 'https://www.googleapis.com/auth/youtube';
 let gisLoading = null, ytToken = null, ytTokenExp = 0;
 function loadGis() {
@@ -1180,7 +1181,8 @@ async function saveToYouTube() {
   } finally { btn.disabled = false; }
 }
 function initSaveYt() {
-  try { $('#gclient').value = localStorage.getItem('mlab.gclient') || ''; } catch {}
+  $('#gclient').value = DEFAULT_GCLIENT;
+  try { $('#gclient').value = localStorage.getItem('mlab.gclient') || DEFAULT_GCLIENT; } catch {}
   $('#gclient').addEventListener('change', e => { try { localStorage.setItem('mlab.gclient', e.target.value.trim()); } catch {} });
   $('#origin-hint').textContent = /^https?:/.test(location.origin) ? location.origin : '例如 http://localhost:8000';
   $('#btn-save-yt').onclick = () => { $('#save-yt-panel').hidden = false; $('#pl-name').focus(); };
