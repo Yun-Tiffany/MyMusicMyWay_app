@@ -497,7 +497,7 @@ class YouTubeBackend {
     s.onerror = () => { clearTimeout(timer); done(false); };
     document.head.appendChild(s);
   }
-  async load(track) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.ref = track.ref; this.fresh = true; this.state = 5; this.player.cueVideoById(track.ref); }
+  async load(track, autoplay) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.ref = track.ref; this.fresh = true; this.state = 5; if (!autoplay) this.player.cueVideoById(track.ref); }
   play() {
     this.want = true; this.stallSince = Date.now(); this.lastPlayCall = Date.now(); if (!this.player) return;
     if (this.fresh) { this.fresh = false; this.player.loadVideoById(this.ref); } else this.player.playVideo();
@@ -620,7 +620,7 @@ async function playTrack(t, autoplay = true) {
   if (settings.mode === 'order') { state.queue = []; fillQueue(); }
   const be = backendFor(t);
   try {
-    state.loading = true; be.show(); await be.load(t); state.loading = false;
+    state.loading = true; be.show(); await be.load(t, autoplay); state.loading = false;
     be.onEnded = onTrackEnded;
     if (autoplay) be.play();
   } catch (e) { state.loading = false; toast(e.message); }
@@ -660,7 +660,8 @@ function prev() {
 function togglePlay() {
   if (!state.current) { next(false); return; }
   const be = backendFor(state.current);
-  be.isPlaying() ? be.pause() : be.play();
+  const on = be === BACKENDS.yt ? !!be.want : be.isPlaying();
+  on ? be.pause() : be.play();
   syncPlayButton();
 }
 
@@ -685,7 +686,8 @@ function tick() {
 
 /* ============ 畫面 ============ */
 function syncPlayButton() {
-  const playing = state.current && backendFor(state.current).isPlaying();
+  const cb = state.current && backendFor(state.current);
+  const playing = !!cb && (cb === BACKENDS.yt ? !!cb.want : cb.isPlaying()); // YouTube 緩衝時先顯示「暫停」，按鈕反應比較快
   $('#play-ico').innerHTML = playing ? '<rect x="13" y="10" width="8" height="28" rx="3" fill="currentColor"/><rect x="27" y="10" width="8" height="28" rx="3" fill="currentColor"/>' : '<path d="M16 10 L38 24 L16 38Z" fill="currentColor"/>';
   $('#play-lbl').textContent = playing ? '暫停' : '播放';
   $('#btn-play').setAttribute('aria-label', playing ? '暫停' : '播放');
