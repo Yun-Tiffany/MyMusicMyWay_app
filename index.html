@@ -130,8 +130,8 @@ select, input[type=text], input[type=number] { background: var(--bg); border: no
 .play-card #btn-play svg { width: 48px; height: 48px }
 .play-card .seekbar .num { color: #9aa3b8 }
 .play-card #seek, .play-card #vol { background: linear-gradient(90deg, var(--blue) var(--p, 0%), #2c3044 var(--p, 0%)); box-shadow: inset 0 1px 3px rgba(0,0,0,.6) }
-.volbar #vol { height: 6px }
-.volbar #btn-mute { all: unset; cursor: pointer; min-width: 3.2em; display: grid; place-items: center; color: #9aa3b8 }
+.seekbar > :first-child, .seekbar > :last-child { flex: none; width: 46px; min-width: 0; box-sizing: border-box }
+.volbar #btn-mute { all: unset; cursor: pointer; width: 46px; height: 28px; display: grid; place-items: center; color: #9aa3b8 }
 .volbar #btn-mute svg { width: 22px; height: 22px }
 .volbar #btn-mute.muted { color: var(--blue) }
 .play-card #vol::-webkit-slider-thumb, .play-card #seek::-webkit-slider-thumb { background: #fff; border-color: var(--blue) }
@@ -999,7 +999,7 @@ function applyVolume() {
   if (webAudio.gain) webAudio.gain.gain.value = m ? 0 : v / 100;
   const yp = window.__ytBackend && window.__ytBackend.player;
   if (yp && yp.setVolume) { yp.setVolume(v); m ? yp.mute() : yp.unMute(); }
-  const vol = $('#vol'); vol.value = v; vol.style.setProperty('--p', (m ? 0 : v) + '%'); $('#vol-n').textContent = m ? '靜音' : v;
+  const vol = $('#vol'); vol.value = m ? 0 : v; vol.style.setProperty('--p', (m ? 0 : v) + '%'); $('#vol-n').textContent = m ? '靜音' : v;
   const mb = $('#btn-mute'); mb.classList.toggle('muted', m); mb.setAttribute('aria-label', m ? '取消靜音' : '靜音');
   $('#vol-ico').innerHTML = '<path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/>' + (m || !v ? '<path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 8.5a5 5 0 0 1 0 7' + (v > 50 ? 'M18.5 6a8.5 8.5 0 0 1 0 12' : '') + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>');
 }
