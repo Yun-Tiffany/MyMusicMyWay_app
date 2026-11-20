@@ -1111,7 +1111,8 @@ async function ytGetAll(path, token, max = 1000) {
   return out;
 }
 async function ytLogin(msgEl) {
-  const clientId = $('#gclient').value.trim();
+  let clientId = $('#gclient').value.trim();
+  if (!/\.apps\.googleusercontent\.com$/.test(clientId)) { clientId = DEFAULT_GCLIENT; $('#gclient').value = clientId; try { localStorage.removeItem('mlab.gclient'); } catch {} }
   if (!clientId) { msgEl.textContent = '第一次要先做「YouTube 帳號設定」，照下面的步驟拿到用戶端 ID 貼上，之後就能一鍵登入。'; const d = $('#gclient').closest('details'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }); return null; }
   try { await loadGis(); } catch { throw new Error('這個頁面載不到 Google 登入，請用 GitHub Pages 的網址開。'); }
   msgEl.textContent = '請在跳出的視窗登入 Google…';
@@ -1153,7 +1154,8 @@ function updateSaveHint() {
 }
 function saveStatus(msg) { const el = $('#save-yt-status'); el.hidden = false; el.innerHTML = msg; }
 async function saveToYouTube() {
-  const clientId = $('#gclient').value.trim();
+  let clientId = $('#gclient').value.trim();
+  if (!/\.apps\.googleusercontent\.com$/.test(clientId)) { clientId = DEFAULT_GCLIENT; $('#gclient').value = clientId; try { localStorage.removeItem('mlab.gclient'); } catch {} }
   if (!clientId) { saveStatus('還沒填 Google 用戶端 ID。請先展開下面的「YouTube 帳號設定」照步驟做一次。'); $('#gclient').closest('details').open = true; return; }
   const songs = ytChecked();
   if (!songs.length) return;
@@ -1182,7 +1184,7 @@ async function saveToYouTube() {
 }
 function initSaveYt() {
   $('#gclient').value = DEFAULT_GCLIENT;
-  try { $('#gclient').value = localStorage.getItem('mlab.gclient') || DEFAULT_GCLIENT; } catch {}
+  try { const v = localStorage.getItem('mlab.gclient') || ''; if (/\.apps\.googleusercontent\.com$/.test(v)) $('#gclient').value = v; } catch {}
   $('#gclient').addEventListener('change', e => { try { localStorage.setItem('mlab.gclient', e.target.value.trim()); } catch {} });
   $('#origin-hint').textContent = /^https?:/.test(location.origin) ? location.origin : '例如 http://localhost:8000';
   $('#btn-save-yt').onclick = () => { $('#save-yt-panel').hidden = false; $('#pl-name').focus(); };
