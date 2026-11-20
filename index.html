@@ -122,6 +122,12 @@ select, input[type=text], input[type=number] { background: var(--bg); border: no
 .time-pill .d { font-family: var(--f-num); font-weight: 300; color: var(--muted) }
 .chip-dark { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; background: var(--night); color: var(--blue-hi); font-size: 12px; width: fit-content }
 #yt-box { aspect-ratio: 16/9; max-width: 100%; border-radius: 26px; overflow: hidden; background: var(--night); box-shadow: var(--raise) }
+#yt-box.small { width: 200px; height: 200px; aspect-ratio: auto }
+.seekbar { display: flex; align-items: center; gap: 10px; width: 100%; grid-column: 1 / -1 }
+.seekbar .num { font-family: var(--f-num); font-size: 14px; color: var(--muted); min-width: 3.2em; text-align: center }
+#seek { flex: 1; -webkit-appearance: none; appearance: none; height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--blue) var(--p, 0%), #d3d5db var(--p, 0%)); box-shadow: var(--press); margin: 0; cursor: pointer }
+#seek::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--night); border: 3px solid var(--blue); box-shadow: 0 0 10px var(--blue-glow) }
+#seek::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--night); border: 3px solid var(--blue) }
 #yt-box iframe { width: 100%; height: 100%; display: block }
 
 /* 吉祥物卡片：插圖斜斜地浮出卡片 */
@@ -255,6 +261,7 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
       <div class="dial-row">
         <div hidden><span id="t-cur"></span><span id="t-dur"></span><span id="now-src"></span></div>
           <button class="tile play" id="btn-play" aria-label="播放" style="aspect-ratio:auto;padding:16px;border-radius:30px"><svg viewBox="0 0 48 48" id="play-ico"><path d="M16 10 L38 24 L16 38Z" fill="currentColor"/></svg><span id="play-lbl">播放</span></button>
+          <div class="seekbar"><span class="num" id="seek-cur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="播放進度，可拖拉"><span class="num" id="seek-dur">0:00</span></div>
       </div>
       <details class="card" aria-label="播放順序">
         <summary><h2>播放順序</h2><span class="tiny" id="mode-now"></span></summary>
@@ -268,6 +275,7 @@ details.card > summary { color: var(--ink); display: flex; gap: 10px; align-item
         <label class="rule"><input type="checkbox" id="r-recent"><span>最近播過的 <input type="number" id="r-recent-n" min="1" max="20" value="3" style="width:4em"> 首先不重播</span><span class="d">避免一直聽到同幾首。</span></label>
         <label class="rule"><input type="checkbox" id="r-skip"><span>跳過太多次的歌少出現</span><span class="d">在一首歌播不到一半就按下一首，算一次跳過。權重模式下每跳過一次權重下降。</span></label>
       </details>
+      <button id="btn-video" class="mini" hidden style="justify-self:start">隱藏影片</button>
       <div id="yt-box" hidden><div id="yt-host"></div></div>
     </div>
 
@@ -465,7 +473,7 @@ class WebAudioBackend {
   time() { return this.playing ? this.ctx.currentTime - this.startAt : this.offset; }
   duration() { return this.buf ? this.buf.duration : 0; }
   isPlaying() { return this.playing; }
-  show() { $('#yt-box').hidden = true; }
+  show() { $('#yt-box').hidden = true; $('#btn-video').hidden = true; }
 }
 
 class YouTubeBackend {
@@ -517,7 +525,7 @@ class YouTubeBackend {
   time() { return this.player && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
   duration() { return this.player && this.player.getDuration ? this.player.getDuration() : 0; }
   isPlaying() { return this.state === 1 || this.state === 3; }
-  show() { $('#yt-box').hidden = false; }  // 依 YouTube 規範，播放器必須看得到
+  show() { $('#yt-box').hidden = false; $('#btn-video').hidden = false; }  // 依 YouTube 規範，播放器必須看得到
 }
 
 const webAudio = new WebAudioBackend();
@@ -679,6 +687,8 @@ function tick() {
     }
     const pct = d ? Math.min(100, cur / d * 100) : 0;
     drawDial(pct); updateHero(cur, d, pct);
+    if (!state.seeking) { const sk = $('#seek'); sk.value = Math.round(pct * 10); sk.style.setProperty('--p', pct + '%'); $('#seek-cur').textContent = fmt(cur); }
+    $('#seek-dur').textContent = fmt(d);
     $('#t-cur').textContent = fmt(cur); $('#t-dur').textContent = fmt(d);
     renderAB(d);
   }
@@ -953,6 +963,20 @@ function updateYtStatus() {
 
 /* ============ 事件 ============ */
 $('#btn-play').onclick = togglePlay;
+{
+  const sk = $('#seek');
+  sk.addEventListener('input', () => {
+    state.seeking = true; const t = state.current; if (!t) return;
+    const d = backendFor(t).duration() || 0; sk.style.setProperty('--p', sk.value / 10 + '%'); $('#seek-cur').textContent = fmt(sk.value / 1000 * d);
+  });
+  sk.addEventListener('change', () => {
+    const t = state.current; state.seeking = false; if (!t) return;
+    const be = backendFor(t); be.seek(sk.value / 1000 * (be.duration() || 0));
+  });
+}
+function applyVideo() { $('#yt-box').classList.toggle('small', !!settings.hideVideo); $('#btn-video').textContent = settings.hideVideo ? '顯示影片' : '隱藏影片'; }
+$('#btn-video').onclick = () => { settings.hideVideo = !settings.hideVideo; persist(); applyVideo(); if (settings.hideVideo) toast('YouTube 規定播放器要看得到，所以縮成最小的方塊'); };
+applyVideo();
 $('#btn-queue-toggle').onclick = () => { const w = $('#queue-wrap'); w.hidden = !w.hidden; $('#btn-queue-toggle').setAttribute('aria-expanded', String(!w.hidden)); renderQueue(); };
 $('#btn-show-off').onclick = () => { state.showOff = !state.showOff; renderLibrary(); };
 $('#btn-all').onclick = () => { lib.forEach(t => t.checked = true); persist(); renderLibrary(); reshuffle(); };
