@@ -482,12 +482,14 @@ class YouTubeBackend {
           onStateChange: e => {
             this.state = e.data;
             if (e.data === 1) fillTitleFromPlayer(this.player);
-            if (e.data === 0) this.onEnded();
+            if (e.data === 1 || e.data === 3) { this.stallSince = 0; this.want = true; }
+            if (e.data === 0 && this.want) { this.want = false; this.onEnded(); }
             // 鎖屏或切到背景時 iOS 常會自動暫停，若不是使用者按的暫停就試著接著播
+            if (e.data === 2 && !document.hidden && Date.now() - (this.lastPlayCall || 0) > 1500) this.want = false; // 使用者在 YouTube 播放器上按了暫停
             if (e.data === 2 && this.want && document.hidden) setTimeout(() => { if (this.want) this.player.playVideo(); }, 400);
             syncPlayButton();
           },
-          onError: () => { toast('這支影片不能嵌入播放，自動跳下一首'); setTimeout(() => next(false), 800); }
+          onError: () => { this.want = false; toast('這支影片不能嵌入播放，自動跳下一首'); setTimeout(() => next(false), 800); }
         }
       });
     };
@@ -495,10 +497,23 @@ class YouTubeBackend {
     s.onerror = () => { clearTimeout(timer); done(false); };
     document.head.appendChild(s);
   }
-  async load(track) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.player.cueVideoById(track.ref); }
-  play() { this.want = true; this.player && this.player.playVideo(); }
+  async load(track) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.ref = track.ref; this.fresh = true; this.state = 5; this.player.cueVideoById(track.ref); }
+  play() {
+    this.want = true; this.stallSince = Date.now(); this.lastPlayCall = Date.now(); if (!this.player) return;
+    if (this.fresh) { this.fresh = false; this.player.loadVideoById(this.ref); } else this.player.playVideo();
+  }
   pause() { this.want = false; this.player && this.player.pauseVideo(); }
-  seek(t) { this.player && this.player.seekTo(t, true); }
+  seek(t) { this.fresh = false; this.player && this.player.seekTo(t, true); }
+  // 保險：應該在播卻卡住（沒開始、被暫停、或結束訊號漏掉）就補一下
+  watch() {
+    if (!this.want || !this.player || !this.player.getPlayerState) return;
+    const st = this.player.getPlayerState();
+    if (st === 1 || st === 3) { this.stallSince = 0; return; }
+    if (st === 0) { this.want = false; this.onEnded(); return; }
+    if (st === 2 && !document.hidden) return;
+    if (!this.stallSince) { this.stallSince = Date.now(); return; }
+    if (Date.now() - this.stallSince > 4000) { this.stallSince = Date.now(); this.lastPlayCall = Date.now(); this.player.playVideo(); }
+  }
   time() { return this.player && this.player.getCurrentTime ? this.player.getCurrentTime() : 0; }
   duration() { return this.player && this.player.getDuration ? this.player.getDuration() : 0; }
   isPlaying() { return this.state === 1 || this.state === 3; }
@@ -653,6 +668,7 @@ function togglePlay() {
 function tick() {
   const t = state.current; if (t && !state.loading) {
     const be = backendFor(t), cur = be.time(), d = be.duration() || 0;
+    if (be.watch) be.watch();
     if (t.ab && t.ab.on && be.isPlaying() && cur >= t.ab.b) {
       if (state.abLeft === -1 || state.abLeft > 0) {
         if (state.abLeft > 0) state.abLeft--;
