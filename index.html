@@ -525,7 +525,7 @@ class YouTubeBackend {
   async load(track, autoplay) { if (!this.ready) throw new Error('YouTube 播放器目前無法使用'); this.ref = track.ref; this.fresh = true; this.state = 5; if (!autoplay) this.player.cueVideoById(track.ref); }
   play() {
     this.want = true; this.stallSince = Date.now(); this.lastPlayCall = Date.now(); if (!this.player) return;
-    if (this.fresh) { this.fresh = false; this.player.loadVideoById(this.ref); } else this.player.playVideo();
+    if (this.fresh) { this.fresh = false; const st = this.startAt || 0; this.startAt = 0; st ? this.player.loadVideoById({ videoId: this.ref, startSeconds: st }) : this.player.loadVideoById(this.ref); } else this.player.playVideo();
   }
   pause() { this.want = false; this.player && this.player.pauseVideo(); }
   seek(t) { this.fresh = false; this.player && this.player.seekTo(t, true); }
@@ -647,7 +647,10 @@ async function playTrack(t, autoplay = true) {
   try {
     state.loading = true; be.show(); await be.load(t, autoplay); state.loading = false;
     be.onEnded = onTrackEnded;
+    const abOn = t.ab && t.ab.on && t.ab.b != null;
+    if (abOn && be === BACKENDS.yt) be.startAt = t.ab.a;
     if (autoplay) be.play();
+    if (abOn && be !== BACKENDS.yt) be.seek(t.ab.a);
   } catch (e) { state.loading = false; toast(e.message); }
   renderNow(); renderLibrary(); renderQueue(); syncPlayButton(); persist();
 }
@@ -696,6 +699,7 @@ function tick() {
     const be = backendFor(t), cur = be.time(), d = be.duration() || 0;
     if (be.watch) be.watch();
     if (t.ab && t.ab.on && be.isPlaying() && cur >= t.ab.b) {
+      if (state.abLeft === 0) { state.abLeft = -2; t.plays++; next(false); return; }
       if (state.abLeft === -1 || state.abLeft > 0) {
         if (state.abLeft > 0) state.abLeft--;
         be.seek(t.ab.a); state.abDone++;
