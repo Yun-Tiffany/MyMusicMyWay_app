@@ -434,7 +434,7 @@ const $ = s => document.querySelector(s);
 const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + String(s).padStart(2, '0'); };
 const store = {
   get(k, d) { try { const v = localStorage.getItem('mlab.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('mlab.' + k, JSON.stringify(v)); } catch {} }
+  set(k, v) { try { localStorage.setItem('mlab.' + k, JSON.stringify(v)); } catch { if (!store.warned) { store.warned = true; setTimeout(() => toast('這個瀏覽器不讓網頁記住設定（可能是無痕模式），關掉後勾選和 A–B 會消失'), 1500); } } }
 };
 let toastTimer;
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200); }
